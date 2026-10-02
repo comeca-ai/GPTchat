@@ -1,0 +1,22 @@
+{
+  "name": "cnpj-chat-cloudflare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "cf:types": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply cnpj-chat-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply cnpj-chat-db --remote",
+    "db:seed": "wrangler d1 execute cnpj-chat-db --local --file=seed.sql",
+    "check": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261002.1",
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.146.0"
+  }
+}
