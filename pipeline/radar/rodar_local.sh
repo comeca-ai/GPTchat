@@ -11,9 +11,12 @@ ETAPA="${1:?uso: rodar_local.sh ensaio|completo|carga}"
 UF="${UF:-SP}"
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
-if [ ! -d .venv-radar ]; then
+if [ ! -f .venv-radar/.ok ]; then
+  rm -rf .venv-radar
   python3 -m venv .venv-radar
-  ./.venv-radar/bin/pip install --quiet -r pipeline/requirements.txt
+  # o radar so precisa de boto3+requests; pyiceberg/pyarrow sao do pipeline antigo
+  ./.venv-radar/bin/pip install --quiet boto3 requests
+  touch .venv-radar/.ok
 fi
 PY=./.venv-radar/bin/python
 
