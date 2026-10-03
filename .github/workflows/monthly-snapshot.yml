@@ -1,0 +1,88 @@
+name: snapshot mensal CNPJ (Receita → Cloudflare)
+on:
+  schedule:
+    - cron: "17 6 15 * *"
+  workflow_dispatch:
+    inputs:
+      snapshot:
+        description: "Competência AAAA-MM (vazio = mais recente)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cnpj-monthly-snapshot
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      snapshot: ${{ steps.plan.outputs.snapshot }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python -m unittest discover -s pipeline -p 'test_*.py'
+      - id: plan
+        env:
+          REQUESTED_SNAPSHOT: ${{ github.event.inputs.snapshot || '' }}
+        run: |
+          args=()
+          if [ -n "$REQUESTED_SNAPSHOT" ]; then args+=(--snapshot "$REQUESTED_SNAPSHOT"); fi
+          python pipeline/discover_rfb.py "${args[@]}" > plan.json
+          echo "matrix=$(jq -c '{include:.include}' plan.json)" >> "$GITHUB_OUTPUT"
+          echo "snapshot=$(jq -r '.snapshot' plan.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ingestion-plan
+          path: plan.json
+          retention-days: 7
+
+  ingest:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r pipeline/requirements.txt
+      - name: Preservar bruto e gravar Iceberg
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_CATALOG_URI: ${{ secrets.R2_CATALOG_URI }}
+          R2_WAREHOUSE: ${{ secrets.R2_WAREHOUSE }}
+          R2_CATALOG_TOKEN: ${{ secrets.R2_CATALOG_TOKEN }}
+        run: python pipeline/ingest_zip.py "${{ matrix.url }}" --snapshot "${{ needs.discover.outputs.snapshot }}"
+
+  promote:
+    needs: [discover, ingest]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r pipeline/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: ingestion-plan
+      - name: Validar e promover snapshot
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_CATALOG_URI: ${{ secrets.R2_CATALOG_URI }}
+          R2_WAREHOUSE: ${{ secrets.R2_WAREHOUSE }}
+          R2_CATALOG_TOKEN: ${{ secrets.R2_CATALOG_TOKEN }}
+        run: python pipeline/finalize_snapshot.py plan.json

@@ -1,15 +1,18 @@
-# CNPJ Aberto — MVP Cloudflare
+# GPTchat CNPJ — base própria na Cloudflare
 
-Chat de consulta aos dados públicos do CNPJ da Receita Federal, inspirado no acesso simples do cnpj.chat. Esta V1 interpreta perguntas em português, transforma-as em filtros seguros e consulta um snapshot versionado.
+Consulta de CNPJ em modo híbrido: BrasilAPI na primeira versão e snapshots próprios dos Dados Abertos da Receita Federal assim que a carga mensal estiver pronta.
 
 ## Arquitetura
 
-- **Workers**: API e interface web na borda.
-- **D1**: índice relacional consultável (empresa, estabelecimento, sócio, Simples/MEI).
-- **R2**: arquivos brutos e snapshots imutáveis da Receita; o D1 guarda apenas o índice necessário ao produto.
+- **Workers**: formulário, API, fallback BrasilAPI e consulta na borda.
+- **R2**: ZIPs oficiais preservados e snapshots imutáveis.
+- **Basin Catalog (R2 Data Catalog) + Iceberg**: tabelas completas em Parquet ZSTD.
+- **Basin SQL**: consultas sobre o snapshot ativo.
+- **D1**: catálogo operacional, feedback e índices quentes — não recebe a base inteira.
 - **KV**: cache de consultas por 15 minutos.
-- **Vectorize + Workers AI**: entendimento semântico de CNAEs e interpretação da pergunta. A V1 já declara os bindings; a busca relacional funciona sem depender do vetor.
-- **Queues**: ingestão mensal assíncrona e retomável.
+- **Workers AI**: interpretação opcional de perguntas; a consulta direta de CNPJ não depende de IA.
+- **Vectorize e Queues**: próximos incrementos para busca semântica e ingestão assíncrona.
+- **GitHub Actions**: atualização mensal, retomável e sem máquina local.
 
 > Os dados são públicos, mas contêm dados pessoais de sócios. Mantenha finalidade legítima, fonte/data visíveis, correção e canal de contato; não trate a base como autorização para spam.
 
@@ -29,28 +32,46 @@ Abra `http://localhost:8787`. O seed contém somente dois registros fictícios/d
 ```bash
 npx wrangler login
 npx wrangler d1 create cnpj-chat-db
-npx wrangler r2 bucket create cnpj-snapshots
+npx wrangler r2 bucket create cnpjs
+npx wrangler r2 bucket catalog enable cnpjs
 npx wrangler kv namespace create CACHE
-npx wrangler vectorize create cnpj-cnae-index --dimensions=1024 --metric=cosine
-npx wrangler queues create cnpj-import
 ```
 
-Copie os IDs retornados para `wrangler.jsonc`, rode `npm run db:migrate:remote` e depois `npm run deploy`.
+Os recursos `cnpjs`, `cnpj-chat-db` e `cnpj-chat-cache` já foram provisionados. Grave `BASIN_SQL_TOKEN` e `CF_ACCOUNT_ID` como segredos do Worker e depois execute `npm run deploy`.
 
 ## Pipeline mensal
 
-O diagrama completo e as relações estão em `docs/data-model.md`. Para não exigir 85 GB livres, `pipeline/csv_to_r2.py` trabalha com um ZIP oficial por execução, gera Parquet ZSTD e envia ao R2. O workflow manual pode ser executado em matriz para os ~37 ZIPs da competência; cada job é retomável e independente.
+O workflow `.github/workflows/monthly-snapshot.yml` roda no dia 15 de cada mês e também pode ser iniciado manualmente. Ele:
 
-Segredos do GitHub necessários: `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e `R2_BUCKET`. Nunca versionar esses valores.
+1. descobre a competência completa mais recente no servidor oficial da Receita;
+2. distribui os ZIPs entre jobs independentes;
+3. preserva cada ZIP no R2 e grava os CSVs como tabelas Iceberg;
+4. valida todos os marcadores e tabelas;
+5. atualiza `catalog/active.json` somente depois de o snapshot estar completo.
 
-Depois de promover as tabelas para Iceberg, altere `DATA_MODE` para `r2sql` e grave o token somente como segredo do Worker:
+Assim, uma carga parcial nunca substitui a base que está atendendo o Worker.
+
+Segredos do GitHub necessários:
+
+- `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e `R2_BUCKET`;
+- `R2_CATALOG_URI`, `R2_WAREHOUSE` e `R2_CATALOG_TOKEN`.
+- `BASIN_SQL_TOKEN`, `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` para a implantação.
+
+O token do catálogo precisa de leitura e escrita no R2 e no Basin Catalog. Nunca versionar esses valores.
+
+O Worker usa `DATA_MODE=hybrid`: consulta a BrasilAPI até existir um snapshot ativo e passa a priorizar o Basin SQL quando a carga própria estiver pronta. Grave o token de leitura somente como segredo:
 
 ```bash
-npx wrangler secret put R2_SQL_TOKEN
+npx wrangler secret put BASIN_SQL_TOKEN
+npx wrangler secret put CF_ACCOUNT_ID
 ```
 
-## Próximo incremento de produção
+O workflow `.github/workflows/deploy-worker.yml` aplica as migrações, sincroniza esses segredos e implanta o Worker somente quando iniciado manualmente.
 
-Ative o R2 Data Catalog no bucket e converta os Parquets para tabelas Iceberg; o produto consulta o conjunto completo com R2 SQL. A troca do snapshot ativo precisa ser atômica: só marque `ready` depois de validar contagens e amostras. Não force os 85 GB em um único D1.
+## Fonte e formato
 
-Pipeline aberto usado como referência de formato e atualização: https://github.com/caiopizzol/cnpj-data-pipeline
+Catálogo oficial: `https://dados.gov.br/dados/conjuntos-dados/cadastro-nacional-da-pessoa-juridica---cnpj`.
+
+Os ZIPs mensais são lidos diretamente do compartilhamento público oficial do SERPRO/Receita por WebDAV (`/public.php/dav/files/...`). A descoberta usa `PROPFIND` e os downloads usam `GET`; não há BrasilAPI nem outro intermediário.
+
+O layout oficial usa CSV separado por `;` e codificação ISO-8859-1. A base completa não é embutida no script do Worker: ela fica no R2, que é o armazenamento apropriado para esse volume.

@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "cnpj-chat-br",
+  "name": "gptchat-cnpj",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-23",
   "workers_dev": true,
@@ -8,34 +8,24 @@
   "d1_databases": [{
     "binding": "DB",
     "database_name": "cnpj-chat-db",
-    "database_id": "SUBSTITUA_PELO_ID_DO_D1",
+    "database_id": "7c58cdd4-2664-42ad-b1df-3d00739c007b",
     "migrations_dir": "migrations"
   }],
   "r2_buckets": [{
     "binding": "SNAPSHOTS",
-    "bucket_name": "cnpj-snapshots"
+    "bucket_name": "cnpjs"
   }],
   "kv_namespaces": [{
     "binding": "CACHE",
-    "id": "SUBSTITUA_PELO_ID_DO_KV"
+    "id": "a2aa2b44166043489b1b0c7d3d31f9d8"
   }],
-  "vectorize": [{
-    "binding": "CNAE_INDEX",
-    "index_name": "cnpj-cnae-index"
-  }],
-  "queues": {
-    "producers": [{
-      "binding": "IMPORT_QUEUE",
-      "queue": "cnpj-import"
-    }]
-  },
   "vars": {
     "APP_NAME": "CNPJ Aberto",
     "LLM_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
     "EMBEDDING_MODEL": "@cf/baai/bge-m3",
-    "DATA_MODE": "d1",
-    "R2_BUCKET_NAME": "cnpj-snapshots",
+    "DATA_MODE": "hybrid",
+    "R2_BUCKET_NAME": "cnpjs",
     "DATA_NAMESPACE": "cnpj",
-    "CF_ACCOUNT_ID": "SUBSTITUA_PELO_ACCOUNT_ID"
+    "BRASIL_API_BASE": "https://brasilapi.com.br/api"
   }
 }

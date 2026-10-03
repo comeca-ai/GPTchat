@@ -3,4 +3,7 @@ node_modules/
 worker-configuration.d.ts
 .dev.vars
 dist/
+work/
+__pycache__/
+*.pyc
 .DS_Store

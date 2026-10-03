@@ -1,0 +1,4 @@
+boto3==1.40.46
+pyarrow==21.0.0
+requests==2.32.5
+pyiceberg[pyarrow,s3fs]>=0.10.0,<1
