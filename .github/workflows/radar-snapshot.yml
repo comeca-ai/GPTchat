@@ -12,7 +12,7 @@ on:
         required: true
         default: "SP"
       ensaio:
-        description: "true = mede um fragmento e para; false = carga completa"
+        description: "true = mede um fragmento e para; false = carga completa + D1"
         required: true
         default: "true"
 
@@ -34,14 +34,12 @@ jobs:
       - run: pip install -r pipeline/requirements.txt
       - run: python -m unittest discover -s pipeline -p 'test_*.py'
       - name: Descobrir competencia
-        id: plan
         env:
           REQUESTED_SNAPSHOT: ${{ github.event.inputs.snapshot || '' }}
         run: |
           args=()
           if [ -n "$REQUESTED_SNAPSHOT" ]; then args+=(--snapshot "$REQUESTED_SNAPSHOT"); fi
           python pipeline/discover_rfb.py "${args[@]}" > plan.json
-          echo "snapshot=$(jq -r '.snapshot' plan.json)" >> "$GITHUB_OUTPUT"
       - name: Extrair recorte em fluxo
         env:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
@@ -55,6 +53,36 @@ jobs:
           python pipeline/radar/extrair_recorte.py "${args[@]}" | tee resultado.json
       - uses: actions/upload-artifact@v4
         with:
-          name: radar-resultado-${{ needs.extrair.outputs.snapshot || 'run' }}
+          name: radar-resultado
           path: resultado.json
           retention-days: 30
+
+  carga:
+    needs: extrair
+    if: ${{ github.event.inputs.ensaio == 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: radar-resultado }
+      - name: Carregar recorte no D1 via Worker (retomavel)
+        env:
+          RADAR_INTERNAL_KEY: ${{ secrets.RADAR_INTERNAL_KEY }}
+          RADAR_WORKER_URL: ${{ secrets.RADAR_WORKER_URL }}
+        run: |
+          BUILD_ID=$(jq -r '.build_id' resultado.json)
+          echo "build_id=$BUILD_ID"
+          OFFSET=0
+          for i in $(seq 1 500); do
+            RESP=$(curl -sf -X POST "$RADAR_WORKER_URL/internal/radar/load" \
+              -H "x-internal-key: $RADAR_INTERNAL_KEY" \
+              -H "content-type: application/json" \
+              -d "{\"build_id\":\"$BUILD_ID\",\"offset\":$OFFSET,\"limit\":5}")
+            echo "$RESP" | jq -c '{loaded_chunks, total_chunks, done}'
+            DONE=$(echo "$RESP" | jq -r '.done')
+            [ "$DONE" = "true" ] && echo "CARGA_CONCLUIDA" && exit 0
+            OFFSET=$(echo "$RESP" | jq -r '.proximo_offset')
+            [ "$OFFSET" = "null" ] && echo "offset nulo sem done; abortando" && exit 1
+            sleep 2
+          done
+          echo "limite de iteracoes atingido"; exit 1

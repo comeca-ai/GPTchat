@@ -168,9 +168,51 @@ async function novaCarteira(env: Env, req: Request): Promise<Response> {
   return json({ carteira_id: carteiraId, total: validos.length, invalidos }, 201);
 }
 
+/* ---------- fallback ao vivo: BrasilAPI para CNPJs fora do recorte ---------- */
+
+const FALLBACK_LIMITE = 200; // teto de consultas ao vivo por cruzamento
+const FALLBACK_CONCORRENCIA = 5;
+
+interface BrasilApiCnpj {
+  cnpj?: string; razao_social?: string; nome_fantasia?: string | null;
+  cnae_fiscal?: number; cnaes_secundarios?: { codigo: number }[];
+  uf?: string; codigo_municipio?: number; porte?: string | null;
+  identificador_matriz_filial?: number; data_inicio_atividade?: string | null;
+  opcao_pelo_simples?: boolean | null; opcao_pelo_mei?: boolean | null;
+}
+
+async function buscarBrasilApi(cnpj: string): Promise<Estabelecimento | null> {
+  try {
+    const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+      headers: { "user-agent": "gptchat-radar/0.1" }, signal: AbortSignal.timeout(10_000),
+    });
+    if (!r.ok) return null;
+    const d = (await r.json()) as BrasilApiCnpj;
+    const cnaes = (d.cnaes_secundarios ?? []).map((c) => String(c.codigo).padStart(7, "0"));
+    return {
+      cnpj,
+      cnpj_raiz: cnpj.slice(0, 8),
+      razao_social: d.razao_social ?? "",
+      nome_fantasia: d.nome_fantasia ?? null,
+      matriz_filial: String(d.identificador_matriz_filial ?? 1),
+      cnae_principal: d.cnae_fiscal ? String(d.cnae_fiscal).padStart(7, "0") : "",
+      cnaes_secundarios: cnaes.length ? cnaes.join(",") : null,
+      uf: d.uf ?? "",
+      municipio_codigo: d.codigo_municipio ? String(d.codigo_municipio) : null,
+      porte: d.porte ?? null,
+      simples: d.opcao_pelo_simples == null ? null : d.opcao_pelo_simples ? "S" : "N",
+      mei: d.opcao_pelo_mei == null ? null : d.opcao_pelo_mei ? "S" : "N",
+      data_inicio: d.data_inicio_atividade ? d.data_inicio_atividade.replaceAll("-", "") : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function cruzar(env: Env, carteiraId: string): Promise<Response> {
-  const build = await buildAtivo(env) as { build_id: string; competencia: string } | null;
-  if (!build) return json({ erro: "nenhum build ativo; rode a carga primeiro" }, 409);
+  const buildAtivoRow = await buildAtivo(env) as { build_id: string; competencia: string } | null;
+  // sem build publicado, opera em modo ao-vivo: tudo via BrasilAPI (teto FALLBACK_LIMITE)
+  const build = buildAtivoRow ?? { build_id: "ao-vivo", competencia: "ao-vivo" };
 
   const cart = await env.RADAR_DB.prepare(
     `SELECT cnpj, cnpj_raiz FROM radar_carteira_cnpjs WHERE carteira_id = ?`
@@ -211,6 +253,20 @@ async function cruzar(env: Env, carteiraId: string): Promise<Response> {
     }
   }
 
+  // fallback ao vivo para faltantes (limitado), marcando a fonte
+  const faltantes = itens.filter((r) => !porCnpj.has(r.cnpj)).slice(0, FALLBACK_LIMITE);
+  const fontes = new Map<string, string>();
+  for (let i = 0; i < faltantes.length; i += FALLBACK_CONCORRENCIA) {
+    const lote = await Promise.all(faltantes.slice(i, i + FALLBACK_CONCORRENCIA)
+      .map((r) => buscarBrasilApi(r.cnpj)));
+    lote.forEach((estab, j) => {
+      if (estab) {
+        porCnpj.set(faltantes[i + j].cnpj, estab);
+        fontes.set(faltantes[i + j].cnpj, "brasilapi_ao_vivo");
+      }
+    });
+  }
+
   const runAt = new Date().toISOString();
   const stmts: D1PreparedStatement[] = [];
   let encontrados = 0;
@@ -218,6 +274,8 @@ async function cruzar(env: Env, carteiraId: string): Promise<Response> {
     const estab = porCnpj.get(r.cnpj) ?? null;
     if (estab) encontrados++;
     const a = avaliar(estab, eventosPorRaiz.get(r.cnpj_raiz) ?? [], build.competencia);
+    (a.detalhes.evidencias as Record<string, unknown>).fonte =
+      fontes.get(r.cnpj) ?? "recorte_rfb";
     stmts.push(env.RADAR_DB.prepare(
       `INSERT OR REPLACE INTO radar_resultados
        (carteira_id, cnpj, encontrado, score, flags, detalhes, build_id, run_at)
