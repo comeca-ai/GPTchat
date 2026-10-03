@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gptchat-radar",
+  "main": "src/radar/index.ts",
+  "compatibility_date": "2026-09-23",
+  "workers_dev": true,
+  "d1_databases": [{
+    "binding": "RADAR_DB",
+    "database_name": "radar-poc",
+    "database_id": "PREENCHER_APOS_CRIAR",
+    "migrations_dir": "migrations-radar"
+  }],
+  "r2_buckets": [{
+    "binding": "SNAPSHOTS",
+    "bucket_name": "cnpjs"
+  }],
+  "vars": {
+    "APP_NAME": "Radar Tributario v0"
+  }
+}

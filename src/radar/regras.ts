@@ -1,0 +1,27 @@
+/** MANTER EM SYNC com pipeline/radar/regras_tributarias.json.
+ * Lista semente RASCUNHO (validar com contador): CNAEs ligados a
+ * profissoes regulamentadas (art. 127 da LC 214/2025, alt. LC 227/2026).
+ */
+export const REGRAS = {
+  regrasVersion: "2026-10-04.rascunho",
+  cnaesArt127: {
+    "6911701": "Servicos advocaticios (OAB)",
+    "6920601": "Atividades de contabilidade (CRC)",
+    "7111100": "Servicos de arquitetura (CAU)",
+    "7112000": "Servicos de engenharia (CREA)",
+    "7500100": "Atividades veterinarias (CRMV)",
+    "8610101": "Atividades de atendimento hospitalar (verificar anexo)",
+    "8630501": "Atividade medica ambulatorial c/ procedimentos cirurgicos (CRM)",
+    "8630502": "Atividade medica ambulatorial c/ exames complementares (CRM)",
+    "8630503": "Atividade medica ambulatorial restrita a consultas (CRM)",
+    "8630504": "Atividade odontologica (CRO)",
+    "8630506": "Servicos de vacinacao e imunizacao humana",
+    "8630507": "Atividades de reproducao humana assistida",
+  } as Record<string, string>,
+  pesos: {
+    elegivel_127: 40,
+    decisao_simples: 30,
+    cnae_suspeito: 20,
+    cnae_mudou: 15,
+  },
+};

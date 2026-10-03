@@ -1,0 +1,60 @@
+name: radar snapshot (Receita -> recorte R2)
+
+on:
+  # Sem gatilho automatico no v0: executar manualmente.
+  workflow_dispatch:
+    inputs:
+      snapshot:
+        description: "Competencia AAAA-MM (vazio = mais recente)"
+        required: false
+      uf:
+        description: "UF do recorte"
+        required: true
+        default: "SP"
+      ensaio:
+        description: "true = mede um fragmento e para; false = carga completa"
+        required: true
+        default: "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: radar-snapshot
+  cancel-in-progress: false
+
+jobs:
+  extrair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r pipeline/requirements.txt
+      - run: python -m unittest discover -s pipeline -p 'test_*.py'
+      - name: Descobrir competencia
+        id: plan
+        env:
+          REQUESTED_SNAPSHOT: ${{ github.event.inputs.snapshot || '' }}
+        run: |
+          args=()
+          if [ -n "$REQUESTED_SNAPSHOT" ]; then args+=(--snapshot "$REQUESTED_SNAPSHOT"); fi
+          python pipeline/discover_rfb.py "${args[@]}" > plan.json
+          echo "snapshot=$(jq -r '.snapshot' plan.json)" >> "$GITHUB_OUTPUT"
+      - name: Extrair recorte em fluxo
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          ENSAIO: ${{ github.event.inputs.ensaio }}
+        run: |
+          args=(--plan plan.json --uf "${{ github.event.inputs.uf }}")
+          if [ "$ENSAIO" = "true" ]; then args+=(--ensaio); fi
+          python pipeline/radar/extrair_recorte.py "${args[@]}" | tee resultado.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radar-resultado-${{ needs.extrair.outputs.snapshot || 'run' }}
+          path: resultado.json
+          retention-days: 30
