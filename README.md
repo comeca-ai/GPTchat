@@ -41,7 +41,7 @@ Os recursos `cnpjs`, `cnpj-chat-db` e `cnpj-chat-cache` já foram provisionados.
 
 ## Pipeline mensal
 
-O workflow `.github/workflows/monthly-snapshot.yml` roda no dia 15 de cada mês e também pode ser iniciado manualmente. Ele:
+O workflow `.github/workflows/monthly-snapshot.yml` está pausado e só pode ser iniciado manualmente. Ao retomar o projeto, o gatilho mensal pode ser reativado. Ele:
 
 1. descobre a competência completa mais recente no servidor oficial da Receita;
 2. distribui os ZIPs entre jobs independentes;

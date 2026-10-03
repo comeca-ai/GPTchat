@@ -1,7 +1,6 @@
 name: snapshot mensal CNPJ (Receita → Cloudflare)
 on:
-  schedule:
-    - cron: "17 6 15 * *"
+  # Projeto pausado: reative o gatilho mensal somente após autorização.
   workflow_dispatch:
     inputs:
       snapshot:

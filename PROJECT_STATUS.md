@@ -24,6 +24,7 @@ Projeto pausado em 3 de outubro de 2026 por solicitação do proprietário.
 ## Pausado antes de executar
 
 - Não iniciar a carga completa da Receita.
+- O gatilho mensal automático foi removido; o workflow permanece manual.
 - Não executar o workflow de implantação.
 - Não adicionar ou alterar segredos no GitHub sem nova autorização.
 - Não substituir a versão atualmente publicada do Worker.
@@ -31,4 +32,3 @@ Projeto pausado em 3 de outubro de 2026 por solicitação do proprietário.
 ## Retomada
 
 Quando houver autorização, o próximo passo é cadastrar os segredos privados do repositório, executar `implantar Worker`, validar o CNPJ de teste no ambiente ao vivo e depois iniciar `snapshot mensal CNPJ (Receita → Cloudflare)`.
-
