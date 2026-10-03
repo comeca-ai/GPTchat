@@ -138,7 +138,7 @@ async function novaCarteira(env: Env, req: Request): Promise<Response> {
   for (const [i, linha] of texto.split(/\r?\n/).entries()) {
     const celula = linha.split(/[;,]/)[0].trim();
     if (!celula) continue;
-    if (i === 0 && /cnpj/i.test(celula) && /[^0-9A-Za-z]/.test(celula)) continue; // cabecalho
+    if (i === 0 && /cnpj/i.test(celula)) continue; // cabecalho
     const cnpj = normalizarCnpj(celula);
     if (!cnpj || !dvValido(cnpj)) { if (celula) invalidos++; continue; }
     if (!vistos.has(cnpj)) { vistos.add(cnpj); validos.push(cnpj); }
