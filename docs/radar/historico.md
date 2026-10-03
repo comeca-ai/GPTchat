@@ -120,10 +120,11 @@ Sequencia acordada: **venda manual -> receita -> plataforma -> assinatura.**
 
 ## 8. Pendencias conhecidas
 
-- [ ] Adicionar 6 secrets no repo (R2_ENDPOINT, R2_ACCESS_KEY_ID,
-      R2_SECRET_ACCESS_KEY, R2_BUCKET, RADAR_INTERNAL_KEY,
-      RADAR_WORKER_URL) e rodar o workflow `radar snapshot`
-      (ensaio=true -> medir -> ensaio=false).
+- [x] Adicionar 6 secrets no repo (feito em 03/10/2026).
+- [ ] Subir a base: Receita bloqueia datacenters (confirmado); executar
+      `pipeline/radar/rodar_local.sh` em maquina no Brasil
+      (ensaio -> completo -> carga). Actions so com self-hosted runner
+      no Brasil.
 - [ ] Diff entre competencias (`cnae_changed`) — tabela pronta, job nao
       implementado no v0.
 - [ ] Validar `regras_tributarias.json` (lista art. 127) com contador.

@@ -27,7 +27,29 @@ npx wrangler secret put RADAR_INTERNAL_KEY -c wrangler.radar.jsonc  # chave da c
 npx wrangler deploy -c wrangler.radar.jsonc
 ```
 
-## Dados (GitHub Actions)
+## Dados — IMPORTANTE: Receita bloqueia datacenters
+
+O servidor oficial (WebDAV e dadosabertos.rfb.gov.br) recusa conexoes de
+IP fora do Brasil/datacenter — confirmado em 03/10/2026 com falha do
+discover tanto no sandbox quanto em runner do GitHub Actions
+("Remote end closed connection without response"). O workflow
+`radar snapshot` so funcionara em self-hosted runner no Brasil.
+**Caminho oficial do v0: execucao local** com
+`pipeline/radar/rodar_local.sh` (ensaio -> completo -> carga).
+
+### Execucao local (Mac/Linux, IP brasileiro)
+
+```bash
+git clone -b radar-v0 https://github.com/comeca-ai/GPTchat.git && cd GPTchat
+export R2_ENDPOINT="https://<account>.r2.cloudflarestorage.com"
+export R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... R2_BUCKET=cnpjs
+export RADAR_INTERNAL_KEY=... RADAR_WORKER_URL="https://gptchat-radar.<sub>.workers.dev"
+bash pipeline/radar/rodar_local.sh ensaio     # mede 1 fragmento
+bash pipeline/radar/rodar_local.sh completo   # extrai o recorte todo
+bash pipeline/radar/rodar_local.sh carga      # carrega o D1
+```
+
+### Dados (GitHub Actions — legado, requer runner no Brasil)
 
 Segredos necessarios no repositorio (mesmos do pipeline principal):
 `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`.
