@@ -31,7 +31,9 @@ export function avaliar(e: Estabelecimento | null, eventos: string[], competenci
       flags: [],
       score: 0,
       detalhes: {
-        frase_trabalho: `CNPJ nao encontrado no recorte ativo (competencia ${competencia}); verificar situacao ou UF fora do recorte.`,
+        frase_trabalho: competencia === "ao-vivo"
+          ? "CNPJ nao encontrado na consulta ao vivo; verificar digitacao, baixa recente ou inaptidao."
+          : `CNPJ nao encontrado no recorte ativo (competencia ${competencia}); verificar situacao ou UF fora do recorte.`,
         evidencias: { encontrado: false, competencia },
       },
     };

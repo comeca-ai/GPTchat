@@ -275,7 +275,7 @@ async function cruzar(env: Env, carteiraId: string): Promise<Response> {
     if (estab) encontrados++;
     const a = avaliar(estab, eventosPorRaiz.get(r.cnpj_raiz) ?? [], build.competencia);
     (a.detalhes.evidencias as Record<string, unknown>).fonte =
-      fontes.get(r.cnpj) ?? "recorte_rfb";
+      estab ? fontes.get(r.cnpj) ?? "recorte_rfb" : "nao_encontrado";
     stmts.push(env.RADAR_DB.prepare(
       `INSERT OR REPLACE INTO radar_resultados
        (carteira_id, cnpj, encontrado, score, flags, detalhes, build_id, run_at)
