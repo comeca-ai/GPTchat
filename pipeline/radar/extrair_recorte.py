@@ -40,6 +40,14 @@ IDX_SIM = {name: i for i, name in enumerate(SCHEMAS["simples"])}
 CHUNK_SIZE = 10_000
 USER_AGENT = "GPTchat-CNPJ-ingestor/1.0"
 
+# Operacao gentil em servidor compartilhado (todas opcionais):
+#   RADAR_TMPDIR      -> pasta de trabalho (default: tmp do sistema)
+#   RADAR_MBPS        -> teto de banda do download em MB/s (default: sem teto)
+#   RADAR_MIN_GB_LIVRE-> aborta se o disco livre ficar abaixo disso (default: 5)
+TMPDIR = os.environ.get("RADAR_TMPDIR") or None
+MBPS = float(os.environ.get("RADAR_MBPS", "0") or 0)
+MIN_GB_LIVRE = float(os.environ.get("RADAR_MIN_GB_LIVRE", "5") or 5)
+
 
 def required_env() -> dict[str, str]:
     names = ["R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"]
@@ -73,6 +81,11 @@ def download(url: str, target: Path) -> float:
                     continue
                 out.write(chunk)
                 baixado += len(chunk)
+                if MBPS > 0:
+                    esperado = baixado / (MBPS * 1024 * 1024)
+                    decorrido = time.monotonic() - start
+                    if esperado > decorrido:
+                        time.sleep(esperado - decorrido)
                 if baixado % (64 * 1024 * 1024) < 8 * 1024 * 1024:
                     mb = baixado / 1024 / 1024
                     vel = mb / max(time.monotonic() - start, 0.1)
@@ -163,7 +176,8 @@ def main() -> None:
         qualidade["etapas"].append({"etapa": nome, **dados})
         print(f"[{nome}] {dados}", file=sys.stderr)
 
-    with tempfile.TemporaryDirectory(prefix="radar-") as tmp:
+    import shutil
+    with tempfile.TemporaryDirectory(prefix="radar-", dir=TMPDIR) as tmp:
         root = Path(tmp)
 
         # Fase 1: Estabelecimentos -> filtro em fluxo, spool em disco + raizes
@@ -175,6 +189,9 @@ def main() -> None:
             writer = csv.writer(out, delimiter=";")
             for url in zips_estab:
                 nome = url_nome(url)
+                livre = shutil.disk_usage(root).free / 1e9
+                if livre < MIN_GB_LIVRE:
+                    raise SystemExit(f"disco livre {livre:.1f} GB < {MIN_GB_LIVRE} GB; abortando antes de {nome}")
                 t0 = time.monotonic()
                 arc = root / "fonte.zip"
                 t_down = download(url, arc)

@@ -18,21 +18,24 @@ if [ ! -f .venv-radar/.ok ]; then
   ./.venv-radar/bin/pip install --quiet boto3 requests
   touch .venv-radar/.ok
 fi
+PYBIN=./.venv-radar/bin/python
 PY=./.venv-radar/bin/python
+# prioridade baixa para nao disputar com outros apps do servidor
+if command -v ionice >/dev/null 2>&1; then NICER="ionice -c3 nice -n 19"; else NICER="nice -n 19"; fi
 
 if [ ! -f plan.json ]; then
   echo ">> descobrindo competencia mais recente..."
-  $PY pipeline/discover_rfb.py > plan.json
+  $NICER $PY pipeline/discover_rfb.py > plan.json
 fi
 echo ">> plano: $($PY -c "import json;p=json.load(open('plan.json'));print(p['snapshot'], len(p['include']), 'ZIPs')")"
 
 case "$ETAPA" in
   ensaio)
-    $PY pipeline/radar/extrair_recorte.py --plan plan.json --uf "$UF" --ensaio | tee resultado-ensaio.json
+    $NICER $PY pipeline/radar/extrair_recorte.py --plan plan.json --uf "$UF" --ensaio | tee resultado-ensaio.json
     echo ">> ensaio concluido; veja a projecao acima e o quality-ensaio.json no R2"
     ;;
   completo)
-    $PY pipeline/radar/extrair_recorte.py --plan plan.json --uf "$UF" | tee resultado.json
+    $NICER $PY pipeline/radar/extrair_recorte.py --plan plan.json --uf "$UF" | tee resultado.json
     echo ">> recorte no R2; rode: bash pipeline/radar/rodar_local.sh carga"
     ;;
   carga)
