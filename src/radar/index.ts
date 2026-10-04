@@ -184,7 +184,7 @@ interface BrasilApiCnpj {
 async function buscarBrasilApi(cnpj: string): Promise<Estabelecimento | null> {
   try {
     const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
-      headers: { "user-agent": "gptchat-radar/0.1" }, signal: AbortSignal.timeout(10_000),
+      headers: { "user-agent": "gptchat-radar/0.1" }, signal: AbortSignal.timeout(5_000),
     });
     if (!r.ok) return null;
     const d = (await r.json()) as BrasilApiCnpj;
@@ -228,12 +228,21 @@ async function cruzar(env: Env, carteiraId: string): Promise<Response> {
     const cnpjs = parte.map((r) => r.cnpj);
     const raizes = [...new Set(parte.map((r) => r.cnpj_raiz))];
     const marcas = (n: number) => Array(n).fill("?").join(",");
-    const estab = await env.RADAR_DB.prepare(
-      `SELECT * FROM radar_estabelecimentos
-       WHERE build_id = ? AND (cnpj IN (${marcas(cnpjs.length)}) OR cnpj_raiz IN (${marcas(raizes.length)}))`
-    ).bind(build.build_id, ...cnpjs, ...raizes).all();
+    // OR entre colunas mata os indices em base grande: duas queries separadas
+    const [qCnpj, qRaiz] = await env.RADAR_DB.batch([
+      env.RADAR_DB.prepare(
+        `SELECT * FROM radar_estabelecimentos WHERE build_id = ? AND cnpj IN (${marcas(cnpjs.length)})`
+      ).bind(build.build_id, ...cnpjs),
+      env.RADAR_DB.prepare(
+        `SELECT * FROM radar_estabelecimentos WHERE build_id = ? AND cnpj_raiz IN (${marcas(raizes.length)})`
+      ).bind(build.build_id, ...raizes),
+    ]);
     const porRaiz = new Map<string, Estabelecimento>();
-    for (const row of (estab.results ?? []) as unknown as Estabelecimento[]) {
+    const linhas = [...(qCnpj.results ?? []), ...(qRaiz.results ?? [])] as unknown as Estabelecimento[];
+    const vistos = new Set<string>();
+    for (const row of linhas) {
+      if (vistos.has(row.cnpj)) continue;
+      vistos.add(row.cnpj);
       porCnpj.set(row.cnpj, row);
       if (!porRaiz.has(row.cnpj_raiz)) porRaiz.set(row.cnpj_raiz, row);
     }
