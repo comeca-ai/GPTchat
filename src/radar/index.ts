@@ -529,7 +529,7 @@ async function tick(){
 tick(); setInterval(tick, 15000);
 </script></body></html>`;
 
-const APP_HTML = `<!doctype html>
+const PRO_HTML = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Radar Tributário — Triagem de Carteira</title>
@@ -840,11 +840,226 @@ if (KEY){ iniciar(); } else { $("auth").style.display = "block"; }
 </script></body></html>`;
 
 
+const APP_HTML = `<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otimizador de CNAEs — sua carteira na reforma tributária</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
+       background:#fbfbfd;color:#1d1d1f;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto;padding:48px 20px 80px}
+  .hero{text-align:center;margin-bottom:36px}
+  .hero h1{font-size:32px;font-weight:700;letter-spacing:-.02em;margin:0 0 8px}
+  .hero p{color:#6e6e73;font-size:16px;margin:0}
+  .card{background:#fff;border-radius:16px;padding:24px;margin:14px 0;
+        box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.05);border:1px solid #eeeef0}
+  .passo{font-size:12px;font-weight:700;color:#0071e3;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+  textarea{width:100%;min-height:130px;border:1px solid #d2d2d7;border-radius:12px;padding:14px;
+           font-family:ui-monospace,Menlo,monospace;font-size:13px;resize:vertical;outline:none}
+  textarea:focus{border-color:#0071e3;box-shadow:0 0 0 3px rgba(0,113,227,.15)}
+  .btn{display:inline-block;background:#0071e3;color:#fff;border:0;border-radius:980px;
+       padding:13px 28px;font-size:15px;font-weight:600;cursor:pointer}
+  .btn:disabled{opacity:.4;cursor:wait}
+  .btn.sec{background:#e8e8ed;color:#1d1d1f}
+  input[type=text],input[type=password]{border:1px solid #d2d2d7;border-radius:10px;padding:10px 12px;font-size:14px;outline:none}
+  input:focus{border-color:#0071e3}
+  .resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center}
+  .resumo .n{font-size:26px;font-weight:700;letter-spacing:-.02em}
+  .resumo .l{font-size:12px;color:#6e6e73;margin-top:2px}
+  .destaque{color:#0071e3}
+  .emp{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-top:1px solid #eeeef0}
+  .emp:first-child{border-top:0}
+  .emp .info{flex:1}
+  .emp .nome{font-weight:600;font-size:14px}
+  .emp .meta{font-size:12px;color:#6e6e73;margin-top:2px}
+  .pill{display:inline-block;border-radius:980px;padding:4px 12px;font-size:11px;font-weight:600;margin:2px 4px 2px 0}
+  .p-verde{background:#e8f7ee;color:#0d7a3f}
+  .p-amarela{background:#fff4d6;color:#8a6100}
+  .p-laranja{background:#ffeadd;color:#a04a00}
+  .p-cinza{background:#f5f5f7;color:#6e6e73}
+  .acao{font-size:13px;color:#1d1d1f;margin-top:8px;line-height:1.45;background:#f5f5f7;border-radius:10px;padding:10px 12px}
+  .acao b{color:#0071e3}
+  #msg{font-size:13px;color:#6e6e73;text-align:center;margin-top:10px}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+  .toolbar input{flex:1;min-width:180px}
+  @media(max-width:560px){.resumo{grid-template-columns:1fr 1fr}.hero h1{font-size:26px}}
+</style></head><body>
+<div class="wrap">
+  <div class="hero">
+    <h1>Otimizador de CNAEs</h1>
+    <p>Cole a carteira de CNPJs. Descubra em segundos quem pode pagar menos imposto<br>
+    na reforma tributária — e o que fazer em cada empresa.</p>
+  </div>
+
+  <div class="card" id="auth" style="display:none;text-align:center">
+    <div class="passo">Acesso</div>
+    <input type="password" id="chave" placeholder="sua chave" style="width:260px">
+    <button class="btn" onclick="entrar()">Entrar</button>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="card">
+      <div class="passo">Passo 1 · A carteira</div>
+      <textarea id="cnpjs" placeholder="Cole aqui os CNPJs, um por linha (com ou sem pontuação)&#10;ou escolha o arquivo CSV abaixo"></textarea>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+        <input type="file" id="arquivo" accept=".csv,.txt" style="font-size:13px">
+        <button class="btn" id="btn-go" onclick="analisar()">Analisar carteira</button>
+      </div>
+      <div id="msg"></div>
+    </div>
+
+    <div id="resultado" style="display:none">
+      <div class="card">
+        <div class="passo">Passo 2 · O resultado</div>
+        <div class="resumo">
+          <div><div class="n" id="r-total">—</div><div class="l">empresas analisadas</div></div>
+          <div><div class="n destaque" id="r-oport">—</div><div class="l">com oportunidade</div></div>
+          <div><div class="n" id="r-sem">—</div><div class="l">sem ação necessária</div></div>
+        </div>
+        <div style="text-align:center;margin-top:14px">
+          <button class="btn sec" onclick="baixarCsv()">⬇ Baixar planilha para o contador</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <input type="text" id="busca" placeholder="Buscar empresa ou CNPJ…" oninput="render()">
+          <select id="f-acao" onchange="render()" style="border:1px solid #d2d2d7;border-radius:10px;padding:10px;font-size:13px">
+            <option value="">Todas</option>
+            <option value="elegivel_127">Podem pagar 30% menos</option>
+            <option value="decisao_simples">Decisão do Simples</option>
+            <option value="cnae_suspeito">CNAE para revisar</option>
+            <option value="__sem">Sem ação</option>
+          </select>
+        </div>
+        <div id="lista"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let KEY = localStorage.getItem("radar_key") || "";
+let CARTEIRA = "";
+let ITENS = [];
+const $ = id => document.getElementById(id);
+const fmt = n => n == null ? "—" : Number(n).toLocaleString("pt-BR");
+
+const ACAO = {
+  elegivel_127: {pill: ["p-verde", "Pode pagar 30% menos"], titulo: "Redução de alíquota (art. 127)",
+    como: "Esta empresa tem CNAE de profissão regulamentada. Revise o enquadramento: se confirmado, ela entra na faixa de redução de 30% do IBS/CBS."},
+  decisao_simples: {pill: ["p-amarela", "Decisão até set/2026"], titulo: "Simples: dentro ou fora",
+    como: "Empresa do Simples. Até setembro de 2026 decida se recolhe CBS/IBS dentro ou fora do DAS — a escolha errada encarece ela para clientes PJ e ela perde contrato."},
+  cnae_suspeito: {pill: ["p-laranja", "CNAE para revisar"], titulo: "CNAE principal suspeito",
+    como: "A atividade principal declarada não parece refletir a atividade real (há CNAE secundário de profissão regulamentada). Corrigir o CNAE pode reduzir imposto e evitar risco fiscal."},
+  cnae_mudou: {pill: ["p-cinza", "CNAE mudou"], titulo: "Mudança recente de CNAE",
+    como: "O CNAE mudou entre competências. Revise o enquadramento tributário do novo código."}
+};
+
+async function api(path, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({"x-radar-key": KEY}, opts.headers || {});
+  return fetch(path, opts);
+}
+function entrar(){ KEY = $("chave").value.trim(); localStorage.setItem("radar_key", KEY); iniciar(); }
+async function iniciar(){
+  const r = await api("/api/radar/status");
+  if (r.status === 401){ $("auth").style.display = "block"; return; }
+  $("auth").style.display = "none";
+  $("app").style.display = "block";
+}
+async function analisar(){
+  const txt = $("cnpjs").value.trim();
+  if (!txt){ msg("Cole os CNPJs primeiro 🙂"); return; }
+  $("btn-go").disabled = true;
+  try{
+    msg("Organizando a carteira…");
+    let r = await api("/api/radar/carteiras", {method: "POST", headers: {"content-type": "text/csv"}, body: txt});
+    let d = await r.json();
+    if (!r.ok){ msg(d.erro || "Não consegui ler os CNPJs"); return; }
+    CARTEIRA = d.carteira_id;
+    msg(d.total + " CNPJs válidos. Cruzando com a reforma tributária…");
+    r = await api("/api/radar/carteiras/" + CARTEIRA + "/cruzar", {method: "POST"});
+    d = await r.json();
+    if (!r.ok){ msg(d.erro || "Erro no cruzamento"); return; }
+    msg("");
+    await carregar();
+    $("resultado").style.display = "block";
+    window.scrollTo({top: $("resultado").offsetTop - 20, behavior: "smooth"});
+  }catch(e){ msg("Falha: " + e.message); }
+  finally{ $("btn-go").disabled = false; }
+}
+async function carregar(){
+  ITENS = [];
+  let offset = 0;
+  for(;;){
+    const r = await api("/api/radar/triage/" + CARTEIRA + "?offset=" + offset);
+    const d = await r.json();
+    if (!r.ok){ msg(d.erro || "erro"); return; }
+    ITENS = ITENS.concat(d.itens || []);
+    if (d.proximo_offset == null) break;
+    offset = d.proximo_offset;
+  }
+  render();
+}
+function tem(it, f){ return (it.flags || []).indexOf(f) >= 0; }
+function render(){
+  const q = $("busca").value.toLowerCase();
+  const f = $("f-acao").value;
+  const comAcao = it => it.encontrado && (it.flags || []).length > 0;
+  const vis = ITENS.filter(it => {
+    if (f === "__sem" && comAcao(it)) return false;
+    if (f && f !== "__sem" && !tem(it, f)) return false;
+    const ev = it.evidencias || {};
+    return !q || ((ev.razao_social || "") + " " + it.cnpj).toLowerCase().indexOf(q) >= 0;
+  });
+  $("r-total").textContent = fmt(ITENS.length);
+  $("r-oport").textContent = fmt(ITENS.filter(comAcao).length);
+  $("r-sem").textContent = fmt(ITENS.filter(it => !comAcao(it)).length);
+  $("lista").innerHTML = vis.map(it => {
+    const ev = it.evidencias || {};
+    const flags = it.encontrado ? (it.flags || []) : [];
+    const pills = it.encontrado
+      ? (flags.length ? flags.map(f => '<span class="pill ' + ACAO[f][0] + '">' + ACAO[f][1] + "</span>").join("")
+                       : '<span class="pill p-cinza">Sem ação necessária</span>')
+      : '<span class="pill p-cinza">Não encontrada na base</span>';
+    const acoes = flags.map(f => '<div class="acao"><b>' + ACAO[f].titulo + ".</b> " + ACAO[f].como + "</div>").join("");
+    return '<div class="emp"><div class="info">'
+      + '<div class="nome">' + (ev.razao_social || it.cnpj) + "</div>"
+      + '<div class="meta">' + it.cnpj + " · CNAE " + (ev.cnae_principal || "—")
+      + (ev.municipio_codigo ? " · município " + ev.municipio_codigo : "")
+      + (ev.simples === "S" ? " · Simples" : "") + "</div>"
+      + '<div style="margin-top:6px">' + pills + "</div>" + acoes
+      + "</div></div>";
+  }).join("") || '<div class="meta" style="padding:16px">Nenhuma empresa nesse filtro.</div>';
+}
+async function baixarCsv(){
+  const r = await api("/api/radar/triage/" + CARTEIRA + "/export");
+  const blob = await r.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "otimizacao-cnaes.csv";
+  a.click();
+}
+$("arquivo").addEventListener("change", ev => {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { $("cnpjs").value = rd.result; };
+  rd.readAsText(f);
+});
+function msg(t){ $("msg").textContent = t; }
+if (KEY) iniciar(); else $("auth").style.display = "block";
+</script></body></html>`;
+
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     const p = url.pathname;
 
+    if (p === "/pro" && req.method === "GET") {
+      return new Response(PRO_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
+    }
     if (p === "/app" && req.method === "GET") {
       return new Response(APP_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
     }
