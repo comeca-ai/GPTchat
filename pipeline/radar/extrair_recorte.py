@@ -62,12 +62,23 @@ def download(url: str, target: Path) -> float:
     if "arquivos.receitafederal.gov.br/public.php/dav/" in url:
         headers["X-Requested-With"] = "XMLHttpRequest"
     start = time.monotonic()
+    nome = url_nome(url)
+    baixado = 0
     with requests.get(url, stream=True, timeout=(30, 900), headers=headers) as r:
         r.raise_for_status()
+        total = int(r.headers.get("content-length") or 0)
         with target.open("wb") as out:
             for chunk in r.iter_content(8 * 1024 * 1024):
-                if chunk:
-                    out.write(chunk)
+                if not chunk:
+                    continue
+                out.write(chunk)
+                baixado += len(chunk)
+                if baixado % (64 * 1024 * 1024) < 8 * 1024 * 1024:
+                    mb = baixado / 1024 / 1024
+                    vel = mb / max(time.monotonic() - start, 0.1)
+                    tam = f"/{total/1024/1024:.0f}" if total else ""
+                    print(f"  .. {nome}: {mb:.0f}{tam} MB ({vel:.1f} MB/s)",
+                          file=sys.stderr, flush=True)
     return time.monotonic() - start
 
 
@@ -170,6 +181,9 @@ def main() -> None:
                 lidas = mantidas = 0
                 for linha in rows_of_zip(arc):
                     lidas += 1
+                    if lidas % 1_000_000 == 0:
+                        print(f"  .. {nome}: {lidas/1e6:.0f}M linhas lidas, "
+                              f"{mantidas} no recorte", file=sys.stderr, flush=True)
                     if len(linha) < len(SCHEMAS["estabelecimentos"]):
                         continue
                     if no_recorte(linha, args.uf, regras):
