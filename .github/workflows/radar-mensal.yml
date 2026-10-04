@@ -1,0 +1,96 @@
+name: radar mensal (Receita -> R2 -> D1)
+
+on:
+  # RFB publica a competencia nova na primeira quinzena; roda dia 15, 07h UTC.
+  schedule:
+    - cron: "0 10 15 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: radar-mensal
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    # A Receita bloqueia IP de datacenter: o job roda no runner self-hosted
+    # da VPS brasileira (label "radar"), nunca em runner hospedado.
+    runs-on: [self-hosted, radar]
+    timeout-minutes: 720
+    env:
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      RADAR_INTERNAL_KEY: ${{ secrets.RADAR_INTERNAL_KEY }}
+      RADAR_WORKER_URL: ${{ secrets.RADAR_WORKER_URL }}
+      RADAR_TMPDIR: /opt/radar-cnpj/tmp
+      RADAR_MBPS: "10"
+      RADAR_MIN_GB_LIVRE: "20"
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: radar-v0 }
+      - name: Descobrir competencia mais recente
+        id: disc
+        run: |
+          rm -f plan-novo.json
+          python3 pipeline/discover_rfb.py > plan-novo.json
+          NOVA=$(jq -r '.snapshot' plan-novo.json)
+          echo "nova=$NOVA" >> "$GITHUB_OUTPUT"
+      - name: Verificar se a competencia ja esta arquivada
+        id: checa
+        run: |
+          pip install --quiet boto3
+          python3 - <<'PYEOF' >> "$GITHUB_OUTPUT"
+          import boto3, os, sys
+          s3 = boto3.client("s3", endpoint_url=os.environ["R2_ENDPOINT"],
+                            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+                            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+                            region_name="auto")
+          nova = open("plan-novo.json") and __import__("json").load(open("plan-novo.json"))["snapshot"]
+          try:
+              s3.head_object(Bucket=os.environ["R2_BUCKET"],
+                             Key=f"radar/raw/{nova}/manifest-raw.json")
+              print("mudou=false")
+          except Exception:
+              print("mudou=true")
+          PYEOF
+      - name: Nada novo — encerrar
+        if: ${{ steps.checa.outputs.mudou == 'false' }}
+        run: echo "competencia ja processada; nada a fazer"
+      - name: Extrair recorte completo
+        if: ${{ steps.checa.outputs.mudou == 'true' }}
+        run: |
+          cp plan-novo.json plan.json
+          python3 -m venv .venv-radar 2>/dev/null || true
+          ./.venv-radar/bin/pip install --quiet boto3 requests 2>/dev/null || true
+          touch .venv-radar/.ok
+          ./.venv-radar/bin/python pipeline/radar/extrair_recorte.py --plan plan.json --uf SP
+      - name: Dimensoes
+        if: ${{ steps.checa.outputs.mudou == 'true' }}
+        run: ./.venv-radar/bin/python pipeline/radar/dimensoes.py
+      - name: Arquivar ZIPs brutos no R2
+        if: ${{ steps.checa.outputs.mudou == 'true' }}
+        run: ./.venv-radar/bin/python pipeline/radar/arquivar_brutos.py
+      - name: Agregar base
+        if: ${{ steps.checa.outputs.mudou == 'true' }}
+        run: |
+          BUILD=$(jq -r '.build_id' resultado.json)
+          ./.venv-radar/bin/python pipeline/radar/agregar.py "$BUILD"
+      - name: Carregar D1 via Worker
+        if: ${{ steps.checa.outputs.mudou == 'true' }}
+        run: |
+          BUILD=$(jq -r '.build_id' resultado.json)
+          OFFSET=0
+          for i in $(seq 1 600); do
+            PAYLOAD=$(printf '{"build_id":"%s","offset":%s,"limit":5}' "$BUILD" "$OFFSET")
+            RESP=$(curl -sf -X POST "$RADAR_WORKER_URL/internal/radar/load"               -H "x-internal-key: $RADAR_INTERNAL_KEY"               -H "content-type: application/json" -d "$PAYLOAD") || { sleep 15; continue; }
+            echo "$RESP" | jq -c '{loaded_chunks, total_chunks, done}'
+            [ "$(echo "$RESP" | jq -r '.done')" = "true" ] && echo CARGA_OK && exit 0
+            OFFSET=$(echo "$RESP" | jq -r '.proximo_offset')
+            [ -z "$OFFSET" ] || [ "$OFFSET" = "null" ] && exit 1
+            sleep 2
+          done
+          exit 1
