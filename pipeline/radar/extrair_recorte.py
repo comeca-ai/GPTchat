@@ -92,6 +92,9 @@ def download(url: str, target: Path) -> float:
                     tam = f"/{total/1024/1024:.0f}" if total else ""
                     print(f"  .. {nome}: {mb:.0f}{tam} MB ({vel:.1f} MB/s)",
                           file=sys.stderr, flush=True)
+                    ping(fase="download", arquivo=nome, mb_baixados=round(mb, 1),
+                         mb_total=round(total / 1024 / 1024, 1) if total else None,
+                         mbps=round(vel, 2))
     return time.monotonic() - start
 
 
@@ -138,6 +141,34 @@ def url_nome(url: str) -> str:
     return unquote(urlparse(url).path.rsplit("/", 1)[-1])
 
 
+# --- heartbeat de monitoramento (lido pelo Worker em /radar) ---
+STATUS: dict = {}
+_ULTIMO_PING = [0.0]
+
+
+def ping(**campos) -> None:
+    """Publica radar/status/atual.json no R2, no maximo 1x a cada 5s."""
+    STATUS.update(campos)
+    agora = time.monotonic()
+    if agora - _ULTIMO_PING[0] < 5:
+        return
+    _ULTIMO_PING[0] = agora
+    try:
+        import datetime
+        corpo = dict(STATUS)
+        corpo["atualizado_em"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        _STATUS_S3.put_object(Bucket=_STATUS_ENV["R2_BUCKET"],
+                              Key="radar/status/atual.json",
+                              Body=json.dumps(corpo, ensure_ascii=False).encode(),
+                              ContentType="application/json")
+    except Exception:
+        pass  # monitoramento nunca derruba o pipeline
+
+
+_STATUS_S3 = None
+_STATUS_ENV: dict = {}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--plan", type=Path, required=True, help="plan.json do discover_rfb.py")
@@ -151,6 +182,8 @@ def main() -> None:
     regras = json.loads(args.regras.read_text())
     env = required_env()
     s3 = s3_client(env)
+    global _STATUS_S3, _STATUS_ENV
+    _STATUS_S3, _STATUS_ENV = s3, env
 
     por_tipo: dict[str, list[str]] = {}
     for item in plan["include"]:
@@ -171,10 +204,14 @@ def main() -> None:
         "etapas": [],
     }
     print(f"build_id={build_id}", file=sys.stderr)
+    ping(fase="inicio", build_id=build_id, competencia=competencia, uf=args.uf,
+         ensaio=args.ensaio)
 
     def etapa(nome, **dados):
         qualidade["etapas"].append({"etapa": nome, **dados})
         print(f"[{nome}] {dados}", file=sys.stderr)
+        ping(fase="etapa_concluida", etapa=nome, **{k: v for k, v in dados.items()
+             if isinstance(v, (int, float, str))})
 
     import shutil
     with tempfile.TemporaryDirectory(prefix="radar-", dir=TMPDIR) as tmp:
@@ -201,6 +238,8 @@ def main() -> None:
                     if lidas % 1_000_000 == 0:
                         print(f"  .. {nome}: {lidas/1e6:.0f}M linhas lidas, "
                               f"{mantidas} no recorte", file=sys.stderr, flush=True)
+                        ping(fase="filtrando", arquivo=nome, linhas_lidas=lidas,
+                             no_recorte=mantidas)
                     if len(linha) < len(SCHEMAS["estabelecimentos"]):
                         continue
                     if no_recorte(linha, args.uf, regras):
@@ -221,6 +260,9 @@ def main() -> None:
                 "linhas_estimadas_recorte": e["mantidas"] * n,
                 "observacao": "projecao linear grosseira; medir antes de escalar (spec secao 7)",
             }
+            ping(fase="ensaio_concluido", **{k: v for k, v in
+                 qualidade.get("projecao_completa", {}).items()
+                 if isinstance(v, (int, float, str))})
             s3.put_object(Bucket=env["R2_BUCKET"], Key=f"{prefixo}/quality-ensaio.json",
                           Body=json.dumps(qualidade, ensure_ascii=False, indent=2).encode(),
                           ContentType="application/json")
@@ -323,6 +365,8 @@ def main() -> None:
         etapa("carga", **qualidade["resumo"])
         if cobertura < 99.5:
             qualidade["alerta"] = "cobertura de Empresas abaixo de 99,5% (limiar da spec)"
+        ping(fase="completo_concluido", registros=escritas, chunks=len(chunks),
+             cobertura_empresas_pct=cobertura)
         for nome, corpo in (("manifest.json", manifest), ("quality.json", qualidade)):
             s3.put_object(Bucket=env["R2_BUCKET"], Key=f"{prefixo}/{nome}",
                           Body=json.dumps(corpo, ensure_ascii=False, indent=2).encode(),
