@@ -320,13 +320,22 @@ async function exportar(env: Env, carteiraId: string): Promise<Response> {
     `SELECT r.cnpj, r.score, r.flags, r.detalhes, r.build_id
      FROM radar_resultados r WHERE r.carteira_id = ? ORDER BY r.score DESC, r.cnpj ASC`
   ).bind(carteiraId).all();
-  const linhas = ["cnpj;razao_social;uf;municipio_codigo;cnae_principal;simples;mei;score;flags;frase_trabalho;competencia"];
+  const linhas = ["cnpj;razao_social;uf;municipio;cnae_principal;cnae_descricao;simples;mei;score;flags;frase_trabalho;competencia"];
+  const [cnaesAll, munsAll] = await Promise.all([
+    env.RADAR_DB.prepare(`SELECT codigo, descricao FROM radar_cnaes`).all(),
+    env.RADAR_DB.prepare(`SELECT codigo, descricao FROM radar_municipios`).all(),
+  ]);
+  const cnaeMap = new Map(((cnaesAll.results ?? []) as { codigo: string; descricao: string }[]).map((r) => [r.codigo, r.descricao]));
+  const munMap = new Map(((munsAll.results ?? []) as { codigo: string; descricao: string }[]).map((r) => [r.codigo, r.descricao]));
   for (const r of (res.results ?? []) as { cnpj: string; score: number; flags: string; detalhes: string; build_id: string }[]) {
     const d = JSON.parse(r.detalhes) as { frase_trabalho: string; evidencias: Record<string, unknown> };
     const ev = d.evidencias ?? {};
+    const cnaeCod = String(ev.cnae_principal ?? "");
     linhas.push([
-      formatarCnpj(r.cnpj), ev.razao_social ?? "", ev.uf ?? "", ev.municipio_codigo ?? "",
-      ev.cnae_principal ?? "", ev.simples ?? "", ev.mei ?? "", r.score,
+      formatarCnpj(r.cnpj), ev.razao_social ?? "", ev.uf ?? "",
+      munMap.get(String(ev.municipio_codigo ?? "")) ?? ev.municipio_codigo ?? "",
+      cnaeCod, cnaeMap.get(cnaeCod) ?? "",
+      ev.simples ?? "", ev.mei ?? "", r.score,
       (JSON.parse(r.flags) as string[]).join("|"), d.frase_trabalho, ev.competencia ?? "",
     ].map(csvSeguro).join(";"));
   }
