@@ -359,7 +359,8 @@ def main() -> None:
                 if raiz in raizes:
                     opt = linha[IDX_SIM["opcao_simples"]].strip()
                     mei = linha[IDX_SIM["opcao_mei"]].strip()
-                    if opt == "S" and linha[IDX_SIM["data_exclusao_simples"]].strip():
+                    exc = linha[IDX_SIM["data_exclusao_simples"]].strip()
+                    if opt == "S" and exc and exc != "00000000":
                         opt = "N"
                     simples[raiz] = (opt or None, mei or None)
             arc.unlink()

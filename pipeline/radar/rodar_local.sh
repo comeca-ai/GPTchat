@@ -41,10 +41,19 @@ case "$ETAPA" in
   carga)
     BUILD_ID="${BUILD_ID:-$($PY -c "import json;print(json.load(open('resultado.json'))['build_id'])")}"
     echo ">> carregando build $BUILD_ID no D1..."
-    OFFSET=0
+    OFFSET="${OFFSET_INICIAL:-0}"
+    echo ">> iniciando no chunk $OFFSET"
     for i in $(seq 1 500); do
-      RESP=$(curl -sf -X POST "$RADAR_WORKER_URL/internal/radar/load"         -H "x-internal-key: $RADAR_INTERNAL_KEY"         -H "content-type: application/json"         -d "{"build_id":"$BUILD_ID","offset":$OFFSET,"limit":5}")
-      echo "$RESP"
+      PAYLOAD=$(printf '{"build_id":"%s","offset":%s,"limit":5}' "$BUILD_ID" "$OFFSET")
+      if ! RESP=$(curl -sf -X POST "$RADAR_WORKER_URL/internal/radar/load" \
+        -H "x-internal-key: $RADAR_INTERNAL_KEY" \
+        -H "content-type: application/json" \
+        -d "$PAYLOAD"); then
+        echo ">> chamada falhou no offset $OFFSET; aguardando 15s e tentando de novo"
+        sleep 15
+        continue
+      fi
+      echo "$RESP" | $PY -c "import json,sys;d=json.load(sys.stdin);print(f\"chunks {d['loaded_chunks']}/{d['total_chunks']} · inseridos {d['inseridos']}\")"
       DONE=$(echo "$RESP" | $PY -c "import json,sys;print(json.load(sys.stdin)['done'])")
       [ "$DONE" = "True" ] && echo ">> CARGA CONCLUIDA" && exit 0
       OFFSET=$(echo "$RESP" | $PY -c "import json,sys;print(json.load(sys.stdin)['proximo_offset'])")
