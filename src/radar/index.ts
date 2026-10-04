@@ -358,6 +358,66 @@ async function status(env: Env): Promise<Response> {
   return json({ build_ativo: build, contagens });
 }
 
+/* ---------- analise agregada + exploracao da base ---------- */
+
+let aggCache: { build: string; dados: unknown; ts: number } | null = null;
+
+async function analiseJson(env: Env): Promise<Response> {
+  const build = await buildAtivo(env) as { build_id: string } | null;
+  if (!build) return json({ erro: "nenhum build ativo" }, 409);
+  if (aggCache && aggCache.build === build.build_id && Date.now() - aggCache.ts < 300_000) {
+    return json(aggCache.dados);
+  }
+  const obj = await env.SNAPSHOTS.get(`radar/aggs/${build.build_id}.json`);
+  if (!obj) return json({ erro: "agregados ainda nao gerados para este build" }, 404);
+  const agg = (await obj.json()) as {
+    total: number; flags: Record<string, number>; competencia: string;
+    por_cnae: Record<string, { n: number; simples: number; eleg127: number }>;
+    por_municipio: Record<string, { n: number; simples: number }>;
+    por_porte: Record<string, { n: number }>;
+  };
+  // enriquecer com descricoes das dimensoes
+  const [cnaesAll, munsAll] = await Promise.all([
+    env.RADAR_DB.prepare(`SELECT codigo, descricao FROM radar_cnaes`).all(),
+    env.RADAR_DB.prepare(`SELECT codigo, descricao FROM radar_municipios`).all(),
+  ]);
+  const cnaeDesc = new Map(((cnaesAll.results ?? []) as { codigo: string; descricao: string }[]).map((r) => [r.codigo, r.descricao]));
+  const munDesc = new Map(((munsAll.results ?? []) as { codigo: string; descricao: string }[]).map((r) => [r.codigo, r.descricao]));
+  const topCnaes = Object.entries(agg.por_cnae)
+    .map(([codigo, d]) => ({ codigo, descricao: cnaeDesc.get(codigo) ?? "", ...d }))
+    .sort((a, b) => b.n - a.n).slice(0, 60);
+  const topMunicipios = Object.entries(agg.por_municipio)
+    .map(([codigo, d]) => ({ codigo, nome: munDesc.get(codigo) ?? codigo, ...d }))
+    .sort((a, b) => b.n - a.n).slice(0, 40);
+  const dados = {
+    build_id: build.build_id, competencia: agg.competencia, total: agg.total,
+    flags: agg.flags, por_porte: agg.por_porte,
+    top_cnaes: topCnaes, top_municipios: topMunicipios,
+  };
+  aggCache = { build: build.build_id, dados, ts: Date.now() };
+  return json(dados);
+}
+
+async function explorar(env: Env, url: URL): Promise<Response> {
+  const build = await buildAtivo(env) as { build_id: string } | null;
+  if (!build) return json({ erro: "nenhum build ativo" }, 409);
+  const cnae = (url.searchParams.get("cnae") ?? "").replace(/[^0-9]/g, "");
+  const simples = url.searchParams.get("simples") === "S" ? "S" : null;
+  const limite = Math.min(Number(url.searchParams.get("limit") ?? 50) || 50, 200);
+  const where: string[] = ["build_id = ?"];
+  const params: (string | number)[] = [build.build_id];
+  if (cnae) { where.push("cnae_principal = ?"); params.push(cnae); }
+  if (simples) { where.push("simples = ?"); params.push(simples); }
+  const res = await env.RADAR_DB.prepare(
+    `SELECT cnpj, razao_social, nome_fantasia, municipio_codigo, uf, cnae_principal,
+            cnaes_secundarios, porte, simples, mei, data_inicio, matriz_filial
+     FROM radar_estabelecimentos WHERE ${where.join(" AND ")}
+     ORDER BY cnpj LIMIT ?`
+  ).bind(...params, limite).all();
+  return json({ build_id: build.build_id, retornados: (res.results ?? []).length,
+                itens: res.results ?? [] });
+}
+
 /* ---------- monitoramento do pipeline ---------- */
 
 async function pipelineJson(env: Env): Promise<Response> {
@@ -507,6 +567,10 @@ const APP_HTML = `<!doctype html>
 <div class="wrap">
 <h1>RADAR TRIBUTÁRIO</h1>
 <div class="sub">triagem de carteira para a reforma — <span id="build">—</span> · <a href="/radar" style="color:#6fc3ff">painel de downloads</a></div>
+<div style="display:flex;gap:8px;margin-bottom:10px">
+  <button class="sec" id="tab-carteira" onclick="aba('carteira')">Carteira</button>
+  <button class="sec" id="tab-explorar" onclick="aba('explorar')">Explorar a base × reforma</button>
+</div>
 
 <div class="card" id="auth">
   <span class="k">chave de acesso</span><br>
@@ -514,6 +578,7 @@ const APP_HTML = `<!doctype html>
 </div>
 
 <div id="app" style="display:none">
+<div id="view-carteira">
   <div class="card stats">
     <div class="stat"><div class="k">na carteira</div><div class="v" id="st-total">—</div></div>
     <div class="stat"><div class="k">encontrados</div><div class="v" id="st-enc">—</div></div>
@@ -552,6 +617,46 @@ const APP_HTML = `<!doctype html>
     <div class="scroll"><table>
       <thead><tr><th>score</th><th>CNPJ</th><th>razão social</th><th>município</th><th>CNAE</th><th>Simples</th><th>flags</th><th>ação de trabalho</th></tr></thead>
       <tbody id="rows"></tbody>
+    </table></div>
+  </div>
+</div>
+
+</div>
+<div id="view-explorar" style="display:none">
+  <div class="card">
+    <div class="k">premissas de receita (edite e veja a otimização)</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:12px;align-items:center">
+      <span>fee por re-enquadramento R$ <input id="p-fee" type="text" value="500" style="width:70px" oninput="renderOport()"></span>
+      <span>assinatura monitoramento R$/mês <input id="p-assin" type="text" value="97" style="width:60px" oninput="renderOport()"></span>
+      <span>conversão da carteira % <input id="p-conv" type="text" value="10" style="width:50px" oninput="renderOport()"></span>
+    </div>
+  </div>
+  <div class="card stats">
+    <div class="stat"><div class="k">base SP serviços</div><div class="v" id="op-total">—</div></div>
+    <div class="stat"><div class="k">elegíveis 30% (art.127)</div><div class="v" id="op-127">—</div></div>
+    <div class="stat"><div class="k">potencial 127 (setup)</div><div class="v" id="op-127r">—</div></div>
+    <div class="stat"><div class="k">decisão Simples</div><div class="v" id="op-sim">—</div></div>
+    <div class="stat"><div class="k">potencial anual recorrente</div><div class="v" id="op-rec">—</div></div>
+  </div>
+  <div class="card">
+    <div class="k">top CNAEs de serviço (clique para ver empresas)</div>
+    <div class="scroll"><table>
+      <thead><tr><th>CNAE</th><th>descrição</th><th>empresas</th><th>no Simples</th><th>elegíveis 127</th></tr></thead>
+      <tbody id="tb-cnaes"></tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <div class="k">top municípios</div>
+    <div class="scroll" style="max-height:260px"><table>
+      <thead><tr><th>município</th><th>empresas</th><th>no Simples</th></tr></thead>
+      <tbody id="tb-muns"></tbody>
+    </table></div>
+  </div>
+  <div class="card" id="card-drill" style="display:none">
+    <div class="k" id="drill-titulo">empresas</div>
+    <div class="scroll"><table>
+      <thead><tr><th>CNPJ</th><th>razão social</th><th>município</th><th>Simples</th><th>MEI</th><th>início</th></tr></thead>
+      <tbody id="tb-drill"></tbody>
     </table></div>
   </div>
 </div>
@@ -679,6 +784,58 @@ $("arquivo").addEventListener("change", ev => {
   rd.readAsText(f);
 });
 function msg(t){ $("msg").textContent = t; }
+
+let AGG = null;
+function aba(v){
+  $("view-carteira").style.display = v === "carteira" ? "block" : "none";
+  $("view-explorar").style.display = v === "explorar" ? "block" : "none";
+  $("tab-carteira").style.background = v === "carteira" ? "#1d6f4a" : "#1d2836";
+  $("tab-explorar").style.background = v === "explorar" ? "#1d6f4a" : "#1d2836";
+  if (v === "explorar" && !AGG) carregarAnalise();
+}
+async function carregarAnalise(){
+  try{
+    const r = await api("/api/radar/analise");
+    const d = await r.json();
+    if (!r.ok){ alert(d.erro || "agregados indisponiveis"); return; }
+    AGG = d;
+    renderExplorar();
+  }catch(e){ alert("falha: " + e.message); }
+}
+function moeda(n){ return "R$ " + Math.round(n).toLocaleString("pt-BR"); }
+function num(id){ return parseFloat($(id).value.replace(",", ".")) || 0; }
+function renderOport(){
+  if (!AGG) return;
+  const fee = num("p-fee"), assin = num("p-assin"), conv = num("p-conv") / 100;
+  const f = AGG.flags || {};
+  const n127 = f.elegivel_127 || 0, nSim = f.decisao_simples || 0;
+  $("op-total").textContent = fmt(AGG.total);
+  $("op-127").textContent = fmt(n127);
+  $("op-sim").textContent = fmt(nSim);
+  $("op-127r").textContent = moeda(n127 * fee * conv);
+  $("op-rec").textContent = moeda((n127 + nSim) * conv * assin * 12) + "/ano";
+}
+function renderExplorar(){
+  renderOport();
+  $("tb-cnaes").innerHTML = (AGG.top_cnaes || []).map(c =>
+    '<tr style="cursor:pointer" onclick="drill(&quot;' + c.codigo + '&quot;,this)">'
+    + "<td>" + c.codigo + "</td><td>" + (c.descricao || "—") + "</td>"
+    + "<td>" + fmt(c.n) + "</td><td>" + fmt(c.simples) + "</td>"
+    + "<td>" + fmt(c.eleg127) + "</td></tr>").join("");
+  $("tb-muns").innerHTML = (AGG.top_municipios || []).map(m =>
+    "<tr><td>" + m.nome + "</td><td>" + fmt(m.n) + "</td><td>" + fmt(m.simples) + "</td></tr>").join("");
+}
+async function drill(codigo, tr){
+  $("card-drill").style.display = "block";
+  $("drill-titulo").textContent = "empresas do CNAE " + codigo + " (amostra de 100)";
+  $("tb-drill").innerHTML = "<tr><td>carregando…</td></tr>";
+  const r = await api("/api/radar/explorar?cnae=" + codigo + "&limit=100");
+  const d = await r.json();
+  $("tb-drill").innerHTML = (d.itens || []).map(e =>
+    "<tr><td>" + e.cnpj + "</td><td>" + (e.razao_social || "") + "</td><td>"
+    + (e.municipio_codigo || "") + "/" + (e.uf || "") + "</td><td>" + (e.simples || "—")
+    + "</td><td>" + (e.mei || "—") + "</td><td>" + (e.data_inicio || "—") + "</td></tr>").join("");
+}
 if (KEY){ iniciar(); } else { $("auth").style.display = "block"; }
 </script></body></html>`;
 
@@ -704,6 +861,8 @@ export default {
     if (p === "/api/radar/status" && req.method === "GET") return status(env);
     if (p === "/api/radar/pipeline" && req.method === "GET") return pipelineJson(env);
     if (p === "/api/radar/painel" && req.method === "GET") return painelJson(env);
+    if (p === "/api/radar/analise" && req.method === "GET") return analiseJson(env);
+    if (p === "/api/radar/explorar" && req.method === "GET") return explorar(env, url);
     if (p === "/api/radar/carteiras" && req.method === "POST") return novaCarteira(env, req);
     let m = p.match(/^\/api\/radar\/carteiras\/([a-f0-9]{24})\/cruzar$/);
     if (m && req.method === "POST") return cruzar(env, m[1]);
