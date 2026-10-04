@@ -368,6 +368,13 @@ async function analiseJson(env: Env): Promise<Response> {
   if (aggCache && aggCache.build === build.build_id && Date.now() - aggCache.ts < 300_000) {
     return json(aggCache.dados);
   }
+  // caminho rapido: snapshot pre-renderizado pelo agregador
+  const snap = await env.SNAPSHOTS.get(`radar/aggs/${build.build_id}-painel.json`);
+  if (snap) {
+    const dados = await snap.json();
+    aggCache = { build: build.build_id, dados, ts: Date.now() };
+    return json(dados);
+  }
   const obj = await env.SNAPSHOTS.get(`radar/aggs/${build.build_id}.json`);
   if (!obj) return json({ erro: "agregados ainda nao gerados para este build" }, 404);
   const agg = (await obj.json()) as {

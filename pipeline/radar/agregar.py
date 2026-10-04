@@ -82,6 +82,36 @@ def main() -> None:
     s3.put_object(Bucket=env["R2_BUCKET"], Key=f"radar/aggs/{build_id}.json",
                   Body=json.dumps(agg, ensure_ascii=False).encode(),
                   ContentType="application/json")
+
+    # snapshot pre-renderizado do painel (descricoes ja fundidas -> Worker so serve)
+    def dims(tabela):
+        try:
+            corpo = s3.get_object(Bucket=env["R2_BUCKET"],
+                                  Key=f"radar/dims/{manifest.get('competencia')}/{tabela}.ndjson"
+                                  )["Body"].read().decode()
+            return {json.loads(l)["codigo"]: json.loads(l)["descricao"]
+                    for l in corpo.split("\n") if l.strip()}
+        except Exception:
+            return {}
+
+    cnae_desc = dims("radar_cnaes")
+    mun_desc = dims("radar_municipios")
+    painel = {
+        "build_id": build_id, "competencia": manifest.get("competencia"),
+        "total": total, "flags": flags, "por_porte": por_porte,
+        "top_cnaes": [
+            {"codigo": c, "descricao": cnae_desc.get(c, ""), **d}
+            for c, d in sorted(por_cnae.items(), key=lambda kv: -kv[1]["n"])[:100]
+        ],
+        "top_municipios": [
+            {"codigo": m, "nome": mun_desc.get(m, m), **d}
+            for m, d in sorted(por_municipio.items(), key=lambda kv: -kv[1]["n"])[:100]
+        ],
+    }
+    s3.put_object(Bucket=env["R2_BUCKET"], Key=f"radar/aggs/{build_id}-painel.json",
+                  Body=json.dumps(painel, ensure_ascii=False).encode(),
+                  ContentType="application/json")
+    print(f"snapshot do painel gravado: radar/aggs/{build_id}-painel.json", file=sys.stderr)
     ping(fase="agregacao_concluida", build_id=build_id, total=total)
     print(json.dumps({"build_id": build_id, "total": total, "flags": flags,
                       "cnaes": len(por_cnae), "municipios": len(por_municipio)}))
