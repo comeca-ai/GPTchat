@@ -469,11 +469,228 @@ async function tick(){
 tick(); setInterval(tick, 15000);
 </script></body></html>`;
 
+const APP_HTML = `<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar Tributário — Triagem de Carteira</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#0b0f14;color:#d7e0ea;margin:0;padding:24px}
+  .wrap{max-width:1100px;margin:0 auto}
+  h1{font-size:19px;color:#7ee0a3;margin:0}
+  .sub{color:#7a8ca0;font-size:12px;margin:4px 0 16px}
+  .card{background:#131a22;border:1px solid #243242;border-radius:10px;padding:14px 16px;margin:10px 0}
+  .k{color:#7a8ca0;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat .v{font-size:22px;margin-top:2px}
+  textarea{width:100%;min-height:110px;background:#0b0f14;border:1px solid #243242;color:#d7e0ea;border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:12px}
+  input[type=text],input[type=password]{background:#0b0f14;border:1px solid #243242;color:#d7e0ea;padding:7px 10px;border-radius:7px}
+  button{background:#1d6f4a;color:#fff;border:0;border-radius:7px;padding:9px 16px;cursor:pointer;font-weight:600}
+  button.sec{background:#1d2836;border:1px solid #243242}
+  button:disabled{opacity:.5;cursor:wait}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  td,th{padding:7px 8px;border-bottom:1px solid #1d2836;text-align:left;vertical-align:top}
+  th{color:#7a8ca0;font-weight:600;font-size:11px;position:sticky;top:0;background:#131a22}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;margin:1px 2px}
+  .b-elegivel_127{background:#14462e;color:#7ee0a3}
+  .b-decisao_simples{background:#4a3a12;color:#ffd479}
+  .b-cnae_suspeito{background:#4a2a12;color:#ffab70}
+  .b-cnae_mudou{background:#123a4a;color:#6fc3ff}
+  .b-nao_encontrado{background:#3a1d1d;color:#ff8a8a}
+  .score{font-weight:700;font-size:14px}
+  .frase{color:#9fb0c3;font-size:11px}
+  .scroll{max-height:520px;overflow:auto}
+  .row-nao{opacity:.55}
+  #msg{font-size:12px;color:#ffd479;min-height:16px;margin-top:8px}
+  select{background:#0b0f14;border:1px solid #243242;color:#d7e0ea;padding:7px;border-radius:7px}
+</style></head><body>
+<div class="wrap">
+<h1>RADAR TRIBUTÁRIO</h1>
+<div class="sub">triagem de carteira para a reforma — <span id="build">—</span> · <a href="/radar" style="color:#6fc3ff">painel de downloads</a></div>
+
+<div class="card" id="auth">
+  <span class="k">chave de acesso</span><br>
+  <input type="password" id="chave" style="width:280px"> <button onclick="entrar()">entrar</button>
+</div>
+
+<div id="app" style="display:none">
+  <div class="card stats">
+    <div class="stat"><div class="k">na carteira</div><div class="v" id="st-total">—</div></div>
+    <div class="stat"><div class="k">encontrados</div><div class="v" id="st-enc">—</div></div>
+    <div class="stat"><div class="k">elegíveis 30%</div><div class="v" id="st-127">—</div></div>
+    <div class="stat"><div class="k">decisão Simples</div><div class="v" id="st-sim">—</div></div>
+    <div class="stat"><div class="k">CNAE suspeito</div><div class="v" id="st-sus">—</div></div>
+  </div>
+
+  <div class="card">
+    <div class="k">1 · carteira de CNPJs (cole ou escolha o CSV do contador)</div>
+    <textarea id="cnpjs" placeholder="cnpj
+11.222.333/0001-81
+..."></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="file" id="arquivo" accept=".csv,.txt">
+      <button id="btn-go" onclick="cruzarTudo()">Criar carteira e cruzar</button>
+      <span id="msg"></span>
+    </div>
+  </div>
+
+  <div class="card" id="card-res" style="display:none">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <span class="k">2 · triagem</span>
+      <select id="f-flag" onchange="render()">
+        <option value="">todas as flags</option>
+        <option value="elegivel_127">elegível 30% (art. 127)</option>
+        <option value="decisao_simples">decisão Simples</option>
+        <option value="cnae_suspeito">CNAE suspeito</option>
+        <option value="cnae_mudou">CNAE mudou</option>
+        <option value="__nao">não encontrados</option>
+      </select>
+      <input type="text" id="f-busca" placeholder="buscar razão social / CNPJ" oninput="render()" style="width:240px">
+      <span style="flex:1"></span>
+      <button class="sec" onclick="baixarCsv()">baixar CSV do contador</button>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>score</th><th>CNPJ</th><th>razão social</th><th>município</th><th>CNAE</th><th>Simples</th><th>flags</th><th>ação de trabalho</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </div>
+</div>
+<div class="sub" id="rodape"></div>
+</div>
+<script>
+let KEY = localStorage.getItem("radar_key") || "";
+let ITENS = [];
+let CARTEIRA = localStorage.getItem("radar_carteira") || "";
+
+const $ = id => document.getElementById(id);
+const fmt = n => n == null ? "—" : Number(n).toLocaleString("pt-BR");
+
+async function api(path, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({"x-radar-key": KEY}, opts.headers || {});
+  const r = await fetch(path, opts);
+  if (r.status === 401){ $("auth").style.display = "block"; throw new Error("chave inválida"); }
+  return r;
+}
+function entrar(){
+  KEY = $("chave").value.trim();
+  localStorage.setItem("radar_key", KEY);
+  iniciar();
+}
+async function iniciar(){
+  try{
+    const r = await api("/api/radar/status");
+    const d = await r.json();
+    $("auth").style.display = "none";
+    $("app").style.display = "block";
+    const b = d.build_ativo || {};
+    $("build").textContent = b.build_id
+      ? "base própria " + b.competencia + " · " + fmt(b.total_registros) + " empresas"
+      : "modo ao-vivo (BrasilAPI)";
+    if (CARTEIRA){ await carregarTriage(); }
+  }catch(e){ $("auth").style.display = "block"; }
+}
+
+async function cruzarTudo(){
+  const txt = $("cnpjs").value.trim();
+  if (!txt){ msg("cole os CNPJs ou escolha o arquivo"); return; }
+  $("btn-go").disabled = true; msg("criando carteira…");
+  try{
+    let r = await api("/api/radar/carteiras", {method: "POST",
+      headers: {"content-type": "text/csv"}, body: txt});
+    let d = await r.json();
+    if (!r.ok){ msg(d.erro || "erro ao criar carteira"); return; }
+    CARTEIRA = d.carteira_id;
+    localStorage.setItem("radar_carteira", CARTEIRA);
+    msg("carteira " + CARTEIRA + " · " + d.total + " válidos, " + d.invalidos + " inválidos · cruzando…");
+    r = await api("/api/radar/carteiras/" + CARTEIRA + "/cruzar", {method: "POST"});
+    d = await r.json();
+    if (!r.ok){ msg(d.erro || "erro ao cruzar"); return; }
+    msg("cruzados " + fmt(d.avaliados) + " · encontrados " + fmt(d.encontrados) + " · fonte: " + d.competencia);
+    await carregarTriage();
+  }catch(e){ msg("falha: " + e.message); }
+  finally{ $("btn-go").disabled = false; }
+}
+
+async function carregarTriage(){
+  ITENS = [];
+  let offset = 0;
+  for(;;){
+    const r = await api("/api/radar/triage/" + CARTEIRA + "?offset=" + offset);
+    const d = await r.json();
+    if (!r.ok){ msg(d.erro || "erro na triagem"); return; }
+    ITENS = ITENS.concat(d.itens || []);
+    if (d.proximo_offset == null) break;
+    offset = d.proximo_offset;
+  }
+  $("card-res").style.display = "block";
+  render();
+}
+
+function temFlag(it, f){ return (it.flags || []).indexOf(f) >= 0; }
+
+function render(){
+  const f = $("f-flag").value;
+  const q = $("f-busca").value.toLowerCase();
+  const vis = ITENS.filter(it => {
+    if (f === "__nao" && it.encontrado) return false;
+    if (f && f !== "__nao" && !temFlag(it, f)) return false;
+    const ev = it.evidencias || {};
+    const texto = ((ev.razao_social || "") + " " + it.cnpj).toLowerCase();
+    return !q || texto.indexOf(q) >= 0;
+  });
+  $("st-total").textContent = fmt(ITENS.length);
+  $("st-enc").textContent = fmt(ITENS.filter(i => i.encontrado).length);
+  $("st-127").textContent = fmt(ITENS.filter(i => temFlag(i, "elegivel_127")).length);
+  $("st-sim").textContent = fmt(ITENS.filter(i => temFlag(i, "decisao_simples")).length);
+  $("st-sus").textContent = fmt(ITENS.filter(i => temFlag(i, "cnae_suspeito")).length);
+  $("rows").innerHTML = vis.map(it => {
+    const ev = it.evidencias || {};
+    const flags = it.encontrado
+      ? (it.flags || []).map(f => '<span class="badge b-' + f + '">' + f + "</span>").join("")
+      : '<span class="badge b-nao_encontrado">não encontrado</span>';
+    return '<tr class="' + (it.encontrado ? "" : "row-nao") + '">'
+      + '<td class="score">' + it.score + "</td>"
+      + "<td>" + it.cnpj + "</td>"
+      + "<td>" + (ev.razao_social || "—") + "</td>"
+      + "<td>" + (ev.municipio_codigo || "—") + "/" + (ev.uf || "") + "</td>"
+      + "<td>" + (ev.cnae_principal || "—") + "</td>"
+      + "<td>" + (ev.simples || "—") + "</td>"
+      + "<td>" + flags + "</td>"
+      + '<td class="frase">' + (it.frase_trabalho || "") + "</td></tr>";
+  }).join("");
+  $("rodape").textContent = vis.length + " de " + ITENS.length + " empresas · carteira " + CARTEIRA;
+}
+
+async function baixarCsv(){
+  const r = await api("/api/radar/triage/" + CARTEIRA + "/export");
+  const blob = await r.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "triage-" + CARTEIRA + ".csv";
+  a.click();
+}
+
+$("arquivo").addEventListener("change", ev => {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { $("cnpjs").value = rd.result; };
+  rd.readAsText(f);
+});
+function msg(t){ $("msg").textContent = t; }
+if (KEY){ iniciar(); } else { $("auth").style.display = "block"; }
+</script></body></html>`;
+
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     const p = url.pathname;
 
+    if (p === "/app" && req.method === "GET") {
+      return new Response(APP_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
+    }
     if (p === "/radar" && req.method === "GET") {
       return new Response(MONITOR_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
     }
