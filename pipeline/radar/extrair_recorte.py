@@ -108,6 +108,10 @@ def download(url: str, target: Path) -> float:
                             ping(fase="download", arquivo=nome, mb_baixados=round(mb, 1),
                                  mb_total=round(total / 1024 / 1024, 1) if total else None,
                                  mbps=round(vel, 2))
+                            ping_arquivo(nome, status="baixando",
+                                         mb_baixados=round(mb, 1),
+                                         mb_total=round(total / 1024 / 1024, 1) if total else None,
+                                         mbps=round(vel, 2))
             return time.monotonic() - start
         except (requests.exceptions.ChunkedEncodingError,
                 requests.exceptions.ConnectionError) as exc:
@@ -191,6 +195,40 @@ def ping(**campos) -> None:
 _STATUS_S3 = None
 _STATUS_ENV: dict = {}
 
+_PING_ARQ: dict = {}
+
+
+def publica_plano(plan: dict) -> None:
+    """Publica a lista de arquivos da competencia para o painel."""
+    try:
+        itens = [{"nome": url_nome(i["url"]), "kind": i["kind"]} for i in plan["include"]]
+        _STATUS_S3.put_object(
+            Bucket=_STATUS_ENV["R2_BUCKET"], Key="radar/status/plano.json",
+            Body=json.dumps({"competencia": plan["snapshot"], "itens": itens},
+                            ensure_ascii=False).encode(),
+            ContentType="application/json")
+    except Exception:
+        pass
+
+
+def ping_arquivo(nome: str, **campos) -> None:
+    """Status individual por arquivo em radar/status/files/{nome}.json (5s)."""
+    agora = time.monotonic()
+    if agora - _PING_ARQ.get(nome, 0) < 5:
+        return
+    _PING_ARQ[nome] = agora
+    try:
+        import datetime
+        corpo = {"nome": nome, **campos,
+                 "atualizado_em": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+        _STATUS_S3.put_object(
+            Bucket=_STATUS_ENV["R2_BUCKET"],
+            Key=f"radar/status/files/{nome}.json",
+            Body=json.dumps(corpo, ensure_ascii=False).encode(),
+            ContentType="application/json")
+    except Exception:
+        pass
+
 
 def main() -> None:
     ap = argparse.ArgumentParser()
@@ -229,6 +267,7 @@ def main() -> None:
     print(f"build_id={build_id}", file=sys.stderr)
     ping(fase="inicio", build_id=build_id, competencia=competencia, uf=args.uf,
          ensaio=args.ensaio)
+    publica_plano(plan)
 
     def etapa(nome, **dados):
         qualidade["etapas"].append({"etapa": nome, **dados})
@@ -271,6 +310,7 @@ def main() -> None:
                         writer.writerow(linha)
                 arc.unlink()
                 total_lidas += lidas
+                ping_arquivo(nome, status="concluido", linhas=lidas, mantidas=mantidas)
                 etapa("estabelecimentos", arquivo=nome, linhas=lidas, mantidas=mantidas,
                       download_s=round(t_down, 1), total_s=round(time.monotonic() - t0, 1))
 

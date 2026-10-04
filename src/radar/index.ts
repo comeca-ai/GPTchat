@@ -366,55 +366,107 @@ async function pipelineJson(env: Env): Promise<Response> {
   return new Response(obj.body, { headers: JSONH });
 }
 
+/* ---------- painel: plano + status por arquivo ---------- */
+
+interface ArqStatus {
+  nome: string; status?: string; mb_baixados?: number; mb_total?: number;
+  mbps?: number; linhas?: number; mantidas?: number; atualizado_em?: string;
+}
+
+async function painelJson(env: Env): Promise<Response> {
+  const [planoObj, lista, atualObj] = await Promise.all([
+    env.SNAPSHOTS.get("radar/status/plano.json"),
+    env.SNAPSHOTS.list({ prefix: "radar/status/files/" }),
+    env.SNAPSHOTS.get("radar/status/atual.json"),
+  ]);
+  const plano = planoObj
+    ? (await planoObj.json()) as { competencia: string; itens: { nome: string; kind: string }[] }
+    : { competencia: null, itens: [] as { nome: string; kind: string }[] };
+  const statusPorNome = new Map<string, ArqStatus>();
+  await Promise.all(lista.objects.map(async (o) => {
+    const obj = await env.SNAPSHOTS.get(o.key);
+    if (!obj) return;
+    try {
+      const st = (await obj.json()) as ArqStatus;
+      statusPorNome.set(st.nome ?? o.key.split("/").pop()!.replace(/\.json$/, ""), st);
+    } catch { /* ignora entrada quebrada */ }
+  }));
+  const arquivos = plano.itens.map((it) => {
+    const st = statusPorNome.get(it.nome) ?? null;
+    const pct = st?.mb_baixados != null && st.mb_total
+      ? Math.min(100, Math.round((st.mb_baixados / st.mb_total) * 100))
+      : st?.status === "concluido" ? 100 : 0;
+    return { nome: it.nome, kind: it.kind, status: st?.status ?? "pendente",
+             pct, mb_baixados: st?.mb_baixados ?? null, mb_total: st?.mb_total ?? null,
+             mbps: st?.mbps ?? null, linhas: st?.linhas ?? null,
+             mantidas: st?.mantidas ?? null, atualizado_em: st?.atualizado_em ?? null };
+  });
+  const heartbeat = atualObj ? await atualObj.json() : null;
+  return json({ competencia: plano.competencia, heartbeat, arquivos });
+}
+
 const MONITOR_HTML = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Radar — monitor do pipeline</title>
+<title>Radar — painel de downloads</title>
 <style>
-  body{font-family:ui-monospace,Menlo,monospace;background:#0b0f14;color:#d7e0ea;max-width:640px;margin:40px auto;padding:0 16px}
-  h1{font-size:18px;color:#7ee0a3} .card{background:#131a22;border:1px solid #243242;border-radius:10px;padding:16px;margin:12px 0}
-  .k{color:#7a8ca0;font-size:12px} .v{font-size:20px;margin-top:2px}
-  .barra{height:10px;background:#1d2836;border-radius:5px;overflow:hidden;margin-top:8px}
+  body{font-family:ui-monospace,Menlo,monospace;background:#0b0f14;color:#d7e0ea;max-width:860px;margin:32px auto;padding:0 14px}
+  h1{font-size:17px;color:#7ee0a3;margin-bottom:4px}
+  .sub{color:#7a8ca0;font-size:12px;margin-bottom:14px}
+  .card{background:#131a22;border:1px solid #243242;border-radius:10px;padding:12px 14px;margin:10px 0}
+  .k{color:#7a8ca0;font-size:11px} .v{font-size:16px;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  td,th{padding:6px 8px;border-bottom:1px solid #1d2836;text-align:left;white-space:nowrap}
+  th{color:#7a8ca0;font-weight:normal;font-size:11px}
+  .barra{height:8px;background:#1d2836;border-radius:4px;overflow:hidden;width:140px}
   .barra>div{height:100%;background:#7ee0a3;transition:width .5s}
-  #status{font-size:12px;color:#7a8ca0;margin-top:16px}
+  .st-concluido{color:#7ee0a3}.st-baixando{color:#ffd479}.st-pendente{color:#5a6a80}
   input{background:#0b0f14;border:1px solid #243242;color:#d7e0ea;padding:6px 8px;border-radius:6px;width:220px}
   button{background:#1d2836;color:#d7e0ea;border:1px solid #243242;border-radius:6px;padding:6px 10px;cursor:pointer}
+  #status{font-size:11px;color:#7a8ca0;margin-top:12px}
 </style></head><body>
-<h1>RADAR · monitor do pipeline</h1>
+<h1>RADAR · painel de downloads</h1>
+<div class="sub" id="comp">—</div>
 <div class="card" id="auth" style="display:none">
-  <div class="k">chave de leitura (RADAR_API_KEY)</div>
+  <span class="k">chave de leitura (RADAR_API_KEY)</span><br>
   <input id="chave" type="password"> <button onclick="salvar()">entrar</button>
 </div>
-<div class="card"><div class="k">fase</div><div class="v" id="fase">—</div>
-  <div class="barra"><div id="bar" style="width:0%"></div></div></div>
-<div class="card"><div class="k">build</div><div class="v" id="build">—</div></div>
-<div class="card"><div class="k">arquivo / progresso</div><div class="v" id="arq">—</div></div>
-<div class="card"><div class="k">linhas lidas · no recorte</div><div class="v" id="linhas">—</div></div>
-<div class="card"><div class="k">velocidade</div><div class="v" id="vel">—</div></div>
-<div id="status">atualizando a cada 10s…</div>
+<div class="card"><div class="k">agora</div><div class="v" id="fase">—</div></div>
+<div class="card"><table>
+  <thead><tr><th>arquivo</th><th>grupo</th><th>progresso</th><th>%</th><th>vel.</th><th>status</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table></div>
+<div id="status">atualizando a cada 15s…</div>
 <script>
 let key = localStorage.getItem("radar_key") || "";
 if (!key) document.getElementById("auth").style.display = "block";
 function salvar(){ key = document.getElementById("chave").value;
   localStorage.setItem("radar_key", key); document.getElementById("auth").style.display = "none"; tick(); }
 const fmt = n => n == null ? "—" : Number(n).toLocaleString("pt-BR");
+function linha(a){
+  return "<tr><td>" + a.nome + "</td><td>" + a.kind + "</td>"
+    + '<td><div class="barra"><div style="width:' + a.pct + '%"></div></div></td>'
+    + "<td>" + a.pct + "%</td>"
+    + "<td>" + (a.mbps != null ? a.mbps + " MB/s" : "—") + "</td>"
+    + '<td class="st-' + a.status + '">' + a.status + "</td></tr>";
+}
 async function tick(){
   try{
-    const r = await fetch("/api/radar/pipeline", {headers: {"x-radar-key": key}});
+    const r = await fetch("/api/radar/painel", {headers: {"x-radar-key": key}});
     const d = await r.json();
-    document.getElementById("fase").textContent = d.fase || d.status || "—";
-    document.getElementById("build").textContent = d.build_id || "—";
-    const mb = d.mb_baixados, tot = d.mb_total;
-    document.getElementById("arq").textContent = d.arquivo
-      ? d.arquivo + (mb != null ? " — " + fmt(mb) + (tot ? "/" + fmt(tot) : "") + " MB" : "") : "—";
-    document.getElementById("bar").style.width = (mb != null && tot) ? Math.min(100, mb/tot*100) + "%" : "0%";
-    document.getElementById("linhas").textContent =
-      d.linhas_lidas != null ? fmt(d.linhas_lidas) + " · " + fmt(d.no_recorte) : "—";
-    document.getElementById("vel").textContent = d.mbps != null ? d.mbps + " MB/s" : "—";
-    document.getElementById("status").textContent = "atualizado: " + (d.atualizado_em || "—");
+    document.getElementById("comp").textContent =
+      "competencia " + (d.competencia || "—") + " · " + d.arquivos.length + " arquivos";
+    const hb = d.heartbeat || {};
+    document.getElementById("fase").textContent =
+      (hb.fase || "—") + (hb.arquivo ? " · " + hb.arquivo : "")
+      + (hb.mb_baixados != null ? " · " + fmt(hb.mb_baixados) + (hb.mb_total ? "/" + fmt(hb.mb_total) : "") + " MB" : "");
+    const ord = {baixando: 0, download_retentativa: 0, pendente: 1, concluido: 2};
+    d.arquivos.sort((x, y) => (ord[x.status] ?? 1) - (ord[y.status] ?? 1) || x.nome.localeCompare(y.nome));
+    document.getElementById("rows").innerHTML = d.arquivos.map(linha).join("");
+    document.getElementById("status").textContent = "atualizado: " + new Date().toLocaleTimeString("pt-BR");
   }catch(e){ document.getElementById("status").textContent = "falha: " + e.message; }
 }
-tick(); setInterval(tick, 10000);
+tick(); setInterval(tick, 15000);
 </script></body></html>`;
 
 export default {
@@ -434,6 +486,7 @@ export default {
 
     if (p === "/api/radar/status" && req.method === "GET") return status(env);
     if (p === "/api/radar/pipeline" && req.method === "GET") return pipelineJson(env);
+    if (p === "/api/radar/painel" && req.method === "GET") return painelJson(env);
     if (p === "/api/radar/carteiras" && req.method === "POST") return novaCarteira(env, req);
     let m = p.match(/^\/api\/radar\/carteiras\/([a-f0-9]{24})\/cruzar$/);
     if (m && req.method === "POST") return cruzar(env, m[1]);
