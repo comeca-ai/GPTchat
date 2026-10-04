@@ -66,36 +66,59 @@ def s3_client(env):
 
 
 def download(url: str, target: Path) -> float:
-    headers = {"User-Agent": USER_AGENT}
+    """Baixa com retomada via Range e ate 5 tentativas (RFB derruba conexao)."""
+    headers_base = {"User-Agent": USER_AGENT}
     if "arquivos.receitafederal.gov.br/public.php/dav/" in url:
-        headers["X-Requested-With"] = "XMLHttpRequest"
+        headers_base["X-Requested-With"] = "XMLHttpRequest"
     start = time.monotonic()
     nome = url_nome(url)
-    baixado = 0
-    with requests.get(url, stream=True, timeout=(30, 900), headers=headers) as r:
-        r.raise_for_status()
-        total = int(r.headers.get("content-length") or 0)
-        with target.open("wb") as out:
-            for chunk in r.iter_content(8 * 1024 * 1024):
-                if not chunk:
-                    continue
-                out.write(chunk)
-                baixado += len(chunk)
-                if MBPS > 0:
-                    esperado = baixado / (MBPS * 1024 * 1024)
-                    decorrido = time.monotonic() - start
-                    if esperado > decorrido:
-                        time.sleep(esperado - decorrido)
-                if baixado % (64 * 1024 * 1024) < 8 * 1024 * 1024:
-                    mb = baixado / 1024 / 1024
-                    vel = mb / max(time.monotonic() - start, 0.1)
-                    tam = f"/{total/1024/1024:.0f}" if total else ""
-                    print(f"  .. {nome}: {mb:.0f}{tam} MB ({vel:.1f} MB/s)",
-                          file=sys.stderr, flush=True)
-                    ping(fase="download", arquivo=nome, mb_baixados=round(mb, 1),
-                         mb_total=round(total / 1024 / 1024, 1) if total else None,
-                         mbps=round(vel, 2))
-    return time.monotonic() - start
+    for tentativa in range(1, 6):
+        baixado = target.stat().st_size if target.exists() else 0
+        headers = dict(headers_base)
+        if baixado:
+            headers["Range"] = f"bytes={baixado}-"
+        try:
+            with requests.get(url, stream=True, timeout=(30, 900), headers=headers) as r:
+                if baixado and r.status_code == 200:
+                    baixado = 0  # servidor ignorou Range: recomeca do zero
+                r.raise_for_status()
+                total = int(r.headers.get("content-length") or 0)
+                total = (total + baixado) if total else 0
+                modo = "ab" if baixado else "wb"
+                if tentativa > 1:
+                    print(f"  .. {nome}: retomando de {baixado/1024/1024:.0f} MB "
+                          f"(tentativa {tentativa})", file=sys.stderr, flush=True)
+                with target.open(modo) as out:
+                    for chunk in r.iter_content(8 * 1024 * 1024):
+                        if not chunk:
+                            continue
+                        out.write(chunk)
+                        baixado += len(chunk)
+                        if MBPS > 0:
+                            esperado = baixado / (MBPS * 1024 * 1024)
+                            decorrido = time.monotonic() - start
+                            if esperado > decorrido:
+                                time.sleep(esperado - decorrido)
+                        if baixado % (64 * 1024 * 1024) < 8 * 1024 * 1024:
+                            mb = baixado / 1024 / 1024
+                            vel = mb / max(time.monotonic() - start, 0.1)
+                            tam = f"/{total/1024/1024:.0f}" if total else ""
+                            print(f"  .. {nome}: {mb:.0f}{tam} MB ({vel:.1f} MB/s)",
+                                  file=sys.stderr, flush=True)
+                            ping(fase="download", arquivo=nome, mb_baixados=round(mb, 1),
+                                 mb_total=round(total / 1024 / 1024, 1) if total else None,
+                                 mbps=round(vel, 2))
+            return time.monotonic() - start
+        except (requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError) as exc:
+            if tentativa == 5:
+                raise
+            espera = 10 * tentativa
+            print(f"  .. {nome}: conexao caiu ({type(exc).__name__}); "
+                  f"nova tentativa em {espera}s", file=sys.stderr, flush=True)
+            ping(fase="download_retentativa", arquivo=nome, tentativa=tentativa)
+            time.sleep(espera)
+    raise AssertionError("tentativas de download esgotadas")
 
 
 def rows_of_zip(zip_path: Path):
