@@ -1089,15 +1089,49 @@ const APP_HTML = `<!doctype html>
 </div>
 <script>
 let AGG = null, DADO = null;
+function normalizarCnpjCli(entrada){
+  const limpo = String(entrada || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+  if (limpo.length !== 14 || !/^[0-9A-Z]{12}[0-9]{2}$/.test(limpo)) return null;
+  return limpo;
+}
+function _valorC(c){ return c.charCodeAt(0) - 48; }
+function _digC(base){
+  let soma = 0;
+  for (let j = 0; j < base.length; j++) soma += _valorC(base[j]) * (((base.length - 1 - j) % 8) + 2);
+  const resto = soma % 11;
+  return resto < 2 ? "0" : String(11 - resto);
+}
+function dvValidoC(c){ const b = c.slice(0, 12); return _digC(b) === c[12] && _digC(b + c[12]) === c[13]; }
+function mascaraCnpjInput(input){
+  input.addEventListener("input", () => {
+    const l = input.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 14);
+    let out = l;
+    if (l.length > 12) out = l.slice(0,2) + "." + l.slice(2,5) + "." + l.slice(5,8) + "/" + l.slice(8,12) + "-" + l.slice(12);
+    else if (l.length > 8) out = l.slice(0,2) + "." + l.slice(2,5) + "." + l.slice(5,8) + "/" + l.slice(8);
+    else if (l.length > 5) out = l.slice(0,2) + "." + l.slice(2,5) + "." + l.slice(5);
+    else if (l.length > 2) out = l.slice(0,2) + "." + l.slice(2);
+    input.value = out;
+  });
+}
 const $ = id => document.getElementById(id);
 const fmt = n => n == null ? "—" : Number(n).toLocaleString("pt-BR");
 async function api(path, opts){ return fetch(path, opts || {}); }
 function msg(t){ $("msg").textContent = t; }
 
 async function iniciar(){
-  const r = await api("/api/radar/analise");
-  const d = await r.json();
-  if (!r.ok){ msg("agregados em atualização; tente em instantes"); return; }
+  $("rank").innerHTML = '<tr><td style="color:#86868b;padding:18px">carregando o mapa do mercado…</td></tr>';
+  let r, d;
+  try{
+    r = await api("/api/radar/analise");
+    d = await r.json();
+  }catch(e){
+    $("rank").innerHTML = '<tr><td style="padding:18px">falha ao carregar — <a href="#" onclick="iniciar();return false" style="color:#0071e3">tentar de novo</a></td></tr>';
+    return;
+  }
+  if (!r.ok){
+    $("rank").innerHTML = '<tr><td style="padding:18px">' + (d.erro || "agregados em atualização") + ' — <a href="#" onclick="iniciar();return false" style="color:#0071e3">tentar de novo</a></td></tr>';
+    return;
+  }
   AGG = d;
   $("conf-base").textContent = fmt(d.total) + " empresas de serviço em SP (" + (d.competencia || "") + ")";
   renderAll();
@@ -1155,7 +1189,16 @@ async function drill(cnae, desc){
     + "<td>" + (e.simples === "S" ? '<span class="tag t-ambar">Simples</span>' : "—") + "</td>"
     + "<td>" + (e.data_inicio && e.data_inicio.length === 8 ? e.data_inicio.slice(6,8) + "/" + e.data_inicio.slice(4,6) + "/" + e.data_inicio.slice(0,4) : "—") + "</td></tr>").join("");
 }
-function consultar(){ const c = $("cnpj").value.trim(); if (c) abrirCnpj(c); }
+function consultar(){
+  const bruto = $("cnpj").value.trim();
+  if (!bruto){ msg("Digite um CNPJ para consultar"); return; }
+  const norm = normalizarCnpjCli(bruto);
+  if (!norm){ msg("CNPJ incompleto — são 14 caracteres"); $("cnpj").style.borderColor = "#d32f2f"; return; }
+  if (!dvValidoC(norm)){ msg("Dígito verificador não confere — confira os números"); $("cnpj").style.borderColor = "#d32f2f"; return; }
+  $("cnpj").style.borderColor = "#0d7a3f";
+  msg("");
+  abrirCnpj(norm);
+}
 async function abrirCnpj(cnpj){
   msg("consultando…");
   const r = await api("/api/radar/cnpj/" + encodeURIComponent(cnpj));
@@ -1214,6 +1257,8 @@ function copiarDelegacao(btn){
     + "\\n\\nMe retorne com o parecer e o plano de ação até o fim desta semana, por favor.";
   navigator.clipboard.writeText(txt).then(() => { btn.textContent = "✅ Copiada!"; setTimeout(() => btn.textContent = "📋 Copiar mensagem de cobrança", 1800); });
 }
+mascaraCnpjInput($("cnpj"));
+$("cnpj").addEventListener("keydown", ev => { if (ev.key === "Enter") consultar(); });
 iniciar();
 </script></body></html>`;
 
