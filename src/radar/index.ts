@@ -503,10 +503,7 @@ const MONITOR_HTML = `<!doctype html>
 </style></head><body>
 <h1>RADAR · painel de downloads</h1>
 <div class="sub" id="comp">—</div>
-<div class="card" id="auth" style="display:none">
-  <span class="k">chave de leitura (RADAR_API_KEY)</span><br>
-  <input id="chave" type="password"> <button onclick="salvar()">entrar</button>
-</div>
+
 <div class="card"><div class="k">agora</div><div class="v" id="fase">—</div></div>
 <div class="card"><table>
   <thead><tr><th>arquivo</th><th>grupo</th><th>progresso</th><th>%</th><th>vel.</th><th>status</th></tr></thead>
@@ -514,10 +511,7 @@ const MONITOR_HTML = `<!doctype html>
 </table></div>
 <div id="status">atualizando a cada 15s…</div>
 <script>
-let key = localStorage.getItem("radar_key") || "";
-if (!key) document.getElementById("auth").style.display = "block";
-function salvar(){ key = document.getElementById("chave").value;
-  localStorage.setItem("radar_key", key); document.getElementById("auth").style.display = "none"; tick(); }
+const key = "";
 const fmt = n => n == null ? "—" : Number(n).toLocaleString("pt-BR");
 function linha(a){
   return "<tr><td>" + a.nome + "</td><td>" + a.kind + "</td>"
@@ -528,7 +522,7 @@ function linha(a){
 }
 async function tick(){
   try{
-    const r = await fetch("/api/radar/painel", {headers: {"x-radar-key": key}});
+    const r = await fetch("/api/radar/painel");
     const d = await r.json();
     document.getElementById("comp").textContent =
       "competencia " + (d.competencia || "—") + " · " + d.arquivos.length + " arquivos";
@@ -681,7 +675,6 @@ const PRO_HTML = `<!doctype html>
 <div class="sub" id="rodape"></div>
 </div>
 <script>
-let KEY = localStorage.getItem("radar_key") || "";
 let ITENS = [];
 let CARTEIRA = localStorage.getItem("radar_carteira") || "";
 
@@ -915,12 +908,7 @@ const APP_HTML = `<!doctype html>
     <p>Reforma tributária, sem juridiquês.<br>Arraste a carteira e veja quanto dinheiro tem na mesa.</p>
   </div>
 
-  <div class="card centro" id="auth" style="display:none">
-    <input type="password" id="chave" class="chave-in" placeholder="sua chave de acesso">
-    <button class="btn mini" onclick="entrar()">Entrar</button>
-  </div>
-
-  <div id="app" style="display:none">
+  <div id="app">
 
     <div class="card" id="entrada">
       <div class="drop" id="drop" onclick="document.getElementById('arquivo').click()">
@@ -964,7 +952,6 @@ const APP_HTML = `<!doctype html>
   </div>
 </div>
 <script>
-let KEY = localStorage.getItem("radar_key") || "";
 let CARTEIRA = "";
 let ITENS = [];
 const $ = id => document.getElementById(id);
@@ -983,17 +970,8 @@ const ACAO = {
     curto: "mudou de CNAE recentemente e o enquadramento precisa ser revisto"}
 };
 
-async function api(path, opts){
-  opts = opts || {};
-  opts.headers = Object.assign({"x-radar-key": KEY}, opts.headers || {});
-  return fetch(path, opts);
-}
-function entrar(){ KEY = $("chave").value.trim(); localStorage.setItem("radar_key", KEY); iniciar(); }
-async function iniciar(){
-  const r = await api("/api/radar/status");
-  if (r.status === 401){ $("auth").style.display = "block"; return; }
-  $("auth").style.display = "none"; $("app").style.display = "block";
-}
+async function api(path, opts){ return fetch(path, opts || {}); }
+async function iniciar(){ await api("/api/radar/status"); }
 async function analisar(){
   const txt = $("cnpjs").value.trim();
   if (!txt){ msg("Cole os CNPJs ou arraste a planilha 🙂"); return; }
@@ -1092,7 +1070,7 @@ function lerArquivo(f){
   rd.readAsText(f);
 }
 function msg(t){ $("msg").textContent = t; }
-if (KEY) iniciar(); else $("auth").style.display = "block";
+iniciar();
 </script></body></html>`;
 
 
@@ -1115,7 +1093,7 @@ export default {
       return carregar(env, req);
     }
     if (!p.startsWith("/api/radar")) return json({ erro: "rota desconhecida" }, 404);
-    if (!autorizado(req, env, "api")) return json({ erro: "nao autorizado" }, 401);
+    // API publica (demonstracao/venda); /internal segue protegido por chave.
 
     if (p === "/api/radar/status" && req.method === "GET") return status(env);
     if (p === "/api/radar/pipeline" && req.method === "GET") return pipelineJson(env);
