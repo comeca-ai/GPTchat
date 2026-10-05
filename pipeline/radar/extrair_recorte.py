@@ -65,6 +65,9 @@ def s3_client(env):
     )
 
 
+FONTE_LOCAL = os.environ.get("RADAR_FONTE_LOCAL") or None
+
+
 def download(url: str, target: Path) -> float:
     """Baixa com retomada via Range e ate 5 tentativas (RFB derruba conexao)."""
     headers_base = {"User-Agent": USER_AGENT}
@@ -72,6 +75,16 @@ def download(url: str, target: Path) -> float:
         headers_base["X-Requested-With"] = "XMLHttpRequest"
     start = time.monotonic()
     nome = url_nome(url)
+    if FONTE_LOCAL:
+        local = Path(FONTE_LOCAL) / nome
+        if local.exists():
+            import shutil as _sh
+            _sh.copyfile(local, target)
+            print(f"  .. {nome}: copiado da fonte local ({local.stat().st_size/1e6:.0f} MB)",
+                  file=sys.stderr, flush=True)
+            ping_arquivo(nome, status="baixando", mb_baixados=round(local.stat().st_size/1e6, 1),
+                         mb_total=round(local.stat().st_size/1e6, 1), mbps=0)
+            return time.monotonic() - start
     for tentativa in range(1, 6):
         baixado = target.stat().st_size if target.exists() else 0
         headers = dict(headers_base)
@@ -146,7 +159,7 @@ def divisao(cnae: str) -> int | None:
 
 def no_recorte(linha, uf: str, regras) -> bool:
     est = IDX_ESTAB
-    if (linha[est["uf"]] or "").strip() != uf:
+    if uf != "BR" and (linha[est["uf"]] or "").strip() != uf:
         return False
     if (linha[est["situacao_cadastral"]] or "").strip() != "02":
         return False

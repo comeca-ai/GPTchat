@@ -46,6 +46,7 @@ def main() -> None:
     por_divisao: dict[str, dict] = {}
     por_municipio: dict[str, dict] = {}
     por_porte: dict[str, dict] = {}
+    por_uf: dict[str, dict] = {}
     flags = {"elegivel_127": 0, "elegivel_128": 0, "decisao_simples": 0, "cnae_suspeito": 0}
     total = 0
 
@@ -84,6 +85,7 @@ def main() -> None:
             conta(por_divisao, cnae[:2] or "??", sim, mei, eleg, e128)
             conta(por_municipio, r.get("municipio_codigo") or "?", sim, mei, eleg, e128)
             conta(por_porte, r.get("porte") or "?", sim, mei, eleg, e128)
+            conta(por_uf, r.get("uf") or "??", sim, mei, eleg, e128)
         if i % 50 == 0:
             print(f".. {i}/{len(manifest['chunks'])} chunks, {total} linhas",
                   file=sys.stderr, flush=True)
@@ -93,7 +95,7 @@ def main() -> None:
         "build_id": build_id, "competencia": manifest.get("competencia"),
         "uf": manifest.get("uf"), "total": total, "flags": flags,
         "por_cnae": por_cnae, "por_divisao": por_divisao,
-        "por_municipio": por_municipio, "por_porte": por_porte,
+        "por_municipio": por_municipio, "por_porte": por_porte, "por_uf": por_uf,
     }
     s3.put_object(Bucket=env["R2_BUCKET"], Key=f"radar/aggs/{build_id}.json",
                   Body=json.dumps(agg, ensure_ascii=False).encode(),
@@ -119,6 +121,7 @@ def main() -> None:
             {"codigo": c, "descricao": cnae_desc.get(c, ""), **d}
             for c, d in sorted(por_cnae.items(), key=lambda kv: -kv[1]["n"])[:100]
         ],
+        "por_uf": por_uf,
         "top_municipios": [
             {"codigo": m, "nome": mun_desc.get(m, m), **d}
             for m, d in sorted(por_municipio.items(), key=lambda kv: -kv[1]["n"])[:100]
