@@ -11,12 +11,14 @@
     "db:migrate:remote": "wrangler d1 migrations apply cnpj-chat-db --remote",
     "db:seed": "wrangler d1 execute cnpj-chat-db --local --file=seed.sql",
     "check": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test test/*.test.ts"
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "test:telas": "node test/agente-telas.js"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261002.1",
     "@types/node": "^26.6.4",
     "typescript": "^7.0.2",
-    "wrangler": "^4.146.0"
+    "wrangler": "^4.146.0",
+    "puppeteer-core": "^24.0.0"
   }
 }

@@ -1,0 +1,27 @@
+name: testar telas (agente E2E)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"  # vigia a cada 6h
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: [self-hosted, radar]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: radar-v0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - name: Instalar Chromium para os testes
+        run: npx puppeteer browsers install chromium
+      - name: Rodar agente de telas
+        env:
+          URL_ALVO: https://indice.ia.br/app
+          PUPPETEER_EXECUTABLE_PATH: ${{ env.HOME }}/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome
+        run: node test/agente-telas.js
