@@ -940,177 +940,231 @@ if (KEY){ iniciar(); } else { $("auth").style.display = "block"; }
 const APP_HTML = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Menos Imposto — sua empresa na reforma tributária</title>
+<title>Radar da Reforma — mapa do mercado</title>
 <style>
   *{box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
-       background:#fbfbfd;color:#1d1d1f;margin:0;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:680px;margin:0 auto;padding:40px 20px 90px}
-  .hero{text-align:center;margin-bottom:26px}
-  .hero h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px}
-  .hero p{color:#6e6e73;font-size:15px;margin:0}
-  .card{background:#fff;border-radius:18px;padding:22px;margin:12px 0;
-        box-shadow:0 1px 3px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.05);border:1px solid #eeeef0}
-  .cnpj-row{display:flex;gap:10px}
-  .cnpj-row input{flex:1;border:1px solid #d2d2d7;border-radius:12px;padding:14px 16px;font-size:17px;outline:none;text-align:center;letter-spacing:.03em}
-  .cnpj-row input:focus{border-color:#0071e3;box-shadow:0 0 0 3px rgba(0,113,227,.15)}
-  .btn{background:#0071e3;color:#fff;border:0;border-radius:980px;padding:14px 26px;font-size:16px;font-weight:600;cursor:pointer;white-space:nowrap}
-  .btn:disabled{opacity:.4;cursor:wait}
-  .btn.sec{background:#e8e8ed;color:#1d1d1f;padding:10px 18px;font-size:13px}
-  .btn.mini{padding:7px 14px;font-size:12px}
-  .ficha-topo h2{font-size:19px;margin:0 0 2px;letter-spacing:-.01em}
-  .ficha-topo .sub{color:#6e6e73;font-size:13px}
-  .fatos{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:14px}
+       background:#f4f5f8;color:#1d1d1f;margin:0;-webkit-font-smoothing:antialiased}
+  .topo{background:#fff;border-bottom:1px solid #e6e6ea;padding:14px 22px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .topo h1{font-size:18px;margin:0;letter-spacing:-.02em}
+  .topo h1 b{color:#0071e3}
+  .topo .conf{font-size:11.5px;color:#86868b}
+  .busca{margin-left:auto;display:flex;gap:8px}
+  .busca input{border:1px solid #d2d2d7;border-radius:980px;padding:9px 16px;font-size:13px;width:230px;outline:none}
+  .busca input:focus{border-color:#0071e3}
+  .btn{background:#0071e3;color:#fff;border:0;border-radius:980px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer}
+  .btn.sec{background:#e8e8ed;color:#1d1d1f}
+  .wrap{max-width:1120px;margin:0 auto;padding:22px 18px 80px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:#fff;border-radius:16px;padding:16px 18px;border:1px solid #eaeaee;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .kpi .n{font-size:27px;font-weight:700;letter-spacing:-.02em;margin-top:4px}
+  .kpi .l{font-size:11.5px;color:#86868b;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+  .kpi.verde .n{color:#0d7a3f}.kpi.azul .n{color:#0071e3}.kpi.ambar .n{color:#b25e00}.kpi.roxo .n{color:#6c3fb5}
+  .grade{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+  @media(max-width:900px){.grade{grid-template-columns:1fr}}
+  .card{background:#fff;border-radius:16px;padding:18px;border:1px solid #eaeaee;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:14px}
+  .card h2{font-size:15px;margin:0 0 2px}
+  .card .sub{font-size:12px;color:#86868b;margin-bottom:10px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-size:10.5px;color:#86868b;text-transform:uppercase;letter-spacing:.04em;padding:7px 8px;border-bottom:1px solid #eee}
+  td{padding:8px;border-bottom:1px solid #f3f3f5}
+  tr.linha{cursor:pointer}
+  tr.linha:hover{background:#f6f9ff}
+  .barra{height:9px;background:#eef0f4;border-radius:5px;overflow:hidden;min-width:90px}
+  .barra > div{height:100%;border-radius:5px}
+  .td-num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;border-radius:980px;padding:2px 9px;font-size:10px;font-weight:700}
+  .t-verde{background:#e8f7ee;color:#0d7a3f}.t-azul{background:#e7f1fd;color:#0071e3}.t-ambar{background:#fff4d6;color:#8a6100}
+  .voltar{font-size:13px;color:#0071e3;cursor:pointer;margin-bottom:8px;display:inline-block}
+  .pill{display:inline-block;border-radius:980px;padding:4px 12px;font-size:11px;font-weight:600;margin:4px 6px 0 0}
+  .p-verde{background:#e8f7ee;color:#0d7a3f}.p-amarela{background:#fff4d6;color:#8a6100}.p-cinza{background:#f5f5f7;color:#6e6e73}
+  .fatos{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:12px}
   .fato .k{font-size:11px;color:#86868b;text-transform:uppercase;letter-spacing:.04em}
   .fato .v{font-size:14px;margin-top:1px}
-  .regra{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-top:1px solid #eeeef0}
+  .regra{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid #eeeef0}
   .regra:first-child{border-top:0}
   .ico{flex:0 0 26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
-  .i-sim{background:#e8f7ee;color:#0d7a3f}
-  .i-nao{background:#f5f5f7;color:#86868b}
-  .i-ver{background:#fff4d6;color:#8a6100}
+  .i-sim{background:#e8f7ee;color:#0d7a3f}.i-nao{background:#f5f5f7;color:#86868b}.i-ver{background:#fff4d6;color:#8a6100}
   .regra .nome{font-size:14px;font-weight:600;line-height:1.35}
   .regra .det{font-size:12.5px;color:#6e6e73;margin-top:2px;line-height:1.45}
-  .economia{text-align:center;background:#f0f7ff;border:1px solid #cfe4ff}
-  .economia .n{font-size:38px;font-weight:700;color:#0071e3;letter-spacing:-.02em}
-  .economia .l{font-size:13px;color:#6e6e73}
-  .economia input{width:110px;border:1px solid #d2d2d7;border-radius:8px;padding:6px 8px;font-size:13px;text-align:right}
-  .passo{display:flex;gap:12px;padding:12px 0;border-top:1px solid #eeeef0;font-size:14px;line-height:1.5}
+  .passo{display:flex;gap:12px;padding:11px 0;border-top:1px solid #eeeef0;font-size:14px;line-height:1.5}
   .passo:first-child{border-top:0}
   .passo .num{flex:0 0 26px;height:26px;border-radius:50%;background:#0071e3;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
-  .avancado{text-align:center;margin-top:14px}
-  .avancado a{color:#0071e3;font-size:13px;text-decoration:none}
-  #msg{font-size:13px;color:#6e6e73;text-align:center;margin-top:12px;min-height:18px}
-  .pill{display:inline-block;border-radius:980px;padding:4px 12px;font-size:11px;font-weight:600;margin:4px 6px 0 0}
-  .p-verde{background:#e8f7ee;color:#0d7a3f}
-  .p-amarela{background:#fff4d6;color:#8a6100}
-  .p-cinza{background:#f5f5f7;color:#6e6e73}
-  textarea{width:100%;min-height:90px;border:1px solid #d2d2d7;border-radius:12px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;resize:vertical;outline:none;margin-top:10px}
-  @media(max-width:560px){.fatos{grid-template-columns:1fr}.cnpj-row{flex-direction:column}.hero h1{font-size:25px}}
+  .economia{text-align:center;background:#f0f7ff;border:1px solid #cfe4ff}
+  .economia .n{font-size:36px;font-weight:700;color:#0071e3}
+  .economia input{width:110px;border:1px solid #d2d2d7;border-radius:8px;padding:6px 8px;font-size:13px;text-align:right}
+  #msg{font-size:12.5px;color:#86868b;text-align:center;margin-top:10px;min-height:16px}
+  input.prem{border:1px solid #d2d2d7;border-radius:8px;padding:5px 7px;font-size:12px;text-align:right;width:64px}
 </style></head><body>
-<div class="wrap">
-  <div class="hero">
-    <h1>Sua empresa paga imposto a mais?</h1>
-    <p>Descubra em 10 segundos. Sem contador, sem juridiquês —<br>e com o passo a passo do que fazer.</p>
+<div class="topo">
+  <div>
+    <h1>Radar da <b>Reforma</b></h1>
+    <div class="conf">base própria Receita Federal · <span id="conf-base">—</span> · LC 214/2025</div>
   </div>
-
-  <div class="card">
-    <div class="cnpj-row">
-      <input id="cnpj" placeholder="Digite o CNPJ da sua empresa" inputmode="numeric">
-      <button class="btn" id="btn-go" onclick="analisar()">Analisar</button>
-    </div>
-    <div id="msg"></div>
-    <div class="avancado"><a href="#" onclick="modoCarteira(event)">tenho vários CNPJs / sou consultor →</a></div>
-    <div id="area-carteira" style="display:none">
-      <textarea id="cnpjs" placeholder="Cole vários CNPJs, um por linha"></textarea>
-      <div style="text-align:center;margin-top:10px"><button class="btn sec" onclick="analisarCarteira()">Analisar carteira</button></div>
-    </div>
-  </div>
-
-  <div style="text-align:center;margin:6px 0 2px">
-    <button class="btn mini sec" id="tab-empresa" onclick="aba('empresa')">Minha empresa</button>
-    <button class="btn mini sec" id="tab-gtm" onclick="aba('gtm')">Mapa do mercado</button>
-  </div>
-
-  <div id="view-empresa">
-    <div id="resultado" style="display:none">
-
-      <div class="card ficha-topo">
-        <h2 id="f-nome">—</h2>
-        <div class="sub" id="f-sub">—</div>
-        <div class="fatos">
-          <div class="fato"><div class="k">Atividade principal</div><div class="v" id="f-cnae">—</div></div>
-          <div class="fato"><div class="k">Regime</div><div class="v" id="f-regime">—</div></div>
-          <div class="fato"><div class="k">Município</div><div class="v" id="f-mun">—</div></div>
-          <div class="fato"><div class="k">Abertura</div><div class="v" id="f-abert">—</div></div>
-        </div>
-        <div id="f-pills"></div>
-      </div>
-
-      <div class="card economia" id="card-eco" style="display:none">
-        <div class="l">Quanto sua empresa paga de imposto por ano? R$
-        <input id="imp-ano" value="120000" oninput="calcEco()"></div>
-        <div class="n" id="eco-n">R$ 0</div>
-        <div class="l" id="eco-l">potencial de economia estimado por ano</div>
-        <div class="l" style="margin-top:6px;font-size:11px">estimativa sobre a redução aplicável (30% ou 60% da alíquota); confirme com a escrituração real</div>
-      </div>
-
-      <div class="card">
-        <div style="font-size:15px;font-weight:700;margin-bottom:4px">O que a reforma muda para esta empresa</div>
-        <div class="sub" style="font-size:12px;color:#6e6e73">cada regra avaliada, uma a uma — base legal LC 214/2025</div>
-        <div id="regras"></div>
-      </div>
-
-      <div class="card">
-        <div style="font-size:15px;font-weight:700">O que fazer agora</div>
-        <div class="passo"><div class="num">1</div><div>Guarde este diagnóstico (imprima ou copie a mensagem abaixo).</div></div>
-        <div class="passo"><div class="num">2</div><div>Envie para quem cuida da sua contabilidade com prazo de resposta. <b>Você não precisa entender — precisa cobrar.</b></div></div>
-        <div class="passo"><div class="num">3</div><div>Se ninguém te responder com clareza em 7 dias, sua empresa está mal assessorada — e isso custa dinheiro todo mês.</div></div>
-        <div style="text-align:center;margin-top:12px">
-          <button class="btn" onclick="copiarDelegacao(this)">📋 Copiar mensagem de cobrança</button>
-        </div>
-      </div>
-
-      <div class="avancado"><a href="/pro">sou contador ou consultor — versão profissional com carteiras →</a></div>
-    </div>
-  </div>
-
-  <div id="view-gtm" style="display:none">
-    <div class="card">
-      <div style="font-size:15px;font-weight:700">Mapa do mercado — recuperação tributária por CNAE</div>
-      <div class="sub" style="font-size:12px;color:#6e6e73">base própria: <span id="gtm-total">—</span> empresas de serviço em SP · premissa de ticket médio R$
-        <input id="gtm-ticket" value="500" style="width:64px;border:1px solid #d2d2d7;border-radius:8px;padding:4px 6px;text-align:right" oninput="renderGtm()"> por diagnóstico
-      </div>
-      <div class="fatos" style="grid-template-columns:repeat(3,1fr);margin:10px 0">
-        <div class="fato"><div class="k">elegíveis 30%</div><div class="v" id="gtm-127">—</div></div>
-        <div class="fato"><div class="k">saúde/educ./cultura 60%</div><div class="v" id="gtm-128">—</div></div>
-        <div class="fato"><div class="k">decisão Simples</div><div class="v" id="gtm-sim">—</div></div>
-      </div>
-      <div style="max-height:440px;overflow:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-        <thead><tr style="text-align:left;color:#86868b;font-size:11px">
-          <th style="padding:7px 6px;border-bottom:1px solid #eee">CNAE</th>
-          <th style="padding:7px 6px;border-bottom:1px solid #eee">atividade</th>
-          <th style="padding:7px 6px;border-bottom:1px solid #eee;text-align:right">empresas</th>
-          <th style="padding:7px 6px;border-bottom:1px solid #eee;text-align:right">elegíveis</th>
-          <th style="padding:7px 6px;border-bottom:1px solid #eee;text-align:right">potencial</th>
-        </tr></thead>
-        <tbody id="gtm-rows"></tbody>
-      </table></div>
-      <div class="sub" style="font-size:11px;color:#86868b;margin-top:8px">ordenado por potencial de mercado = elegíveis × ticket · clique numa linha para ver empresas (versão pro)</div>
-    </div>
+  <div class="busca">
+    <input id="cnpj" placeholder="consultar um CNPJ…" inputmode="numeric">
+    <button class="btn" onclick="consultar()">Buscar</button>
   </div>
 </div>
+<div class="wrap">
+  <div class="kpis">
+    <div class="kpi azul"><div class="l">empresas na base</div><div class="n" id="k-total">—</div></div>
+    <div class="kpi verde"><div class="l">elegíveis 30% (art.127)</div><div class="n" id="k-127">—</div></div>
+    <div class="kpi roxo"><div class="l">saúde/educ./cultura 60%</div><div class="n" id="k-128">—</div></div>
+    <div class="kpi ambar"><div class="l">decisão Simples</div><div class="n" id="k-sim">—</div></div>
+    <div class="kpi"><div class="l">potencial · ticket R$ <input class="prem" id="ticket" value="500" oninput="renderAll()"></div><div class="n" id="k-pot">—</div></div>
+  </div>
+
+  <div id="dash">
+    <div class="grade">
+      <div class="card">
+        <h2>Onde está o dinheiro — por CNAE</h2>
+        <div class="sub">ranking por potencial de mercado (elegíveis × ticket) · clique para ver as empresas</div>
+        <table>
+          <thead><tr><th>CNAE / atividade</th><th class="td-num">empresas</th><th class="td-num">elegíveis</th><th>participação</th><th class="td-num">potencial</th></tr></thead>
+          <tbody id="rank"></tbody>
+        </table>
+      </div>
+      <div>
+        <div class="card">
+          <h2>Top municípios</h2>
+          <div class="sub">empresas de serviço por cidade</div>
+          <table><tbody id="muns"></tbody></table>
+        </div>
+        <div class="card">
+          <h2>Por porte</h2>
+          <div class="sub">distribuição da base</div>
+          <table><tbody id="portes"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="drill" style="display:none">
+    <span class="voltar" onclick="voltarDash()">← voltar ao mapa</span>
+    <div class="card">
+      <h2 id="drill-titulo">empresas</h2>
+      <div class="sub" id="drill-sub">amostra de 100 · clique para abrir a ficha completa</div>
+      <table>
+        <thead><tr><th>razão social</th><th>CNPJ</th><th>município</th><th>Simples</th><th>abertura</th></tr></thead>
+        <tbody id="empresas"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="ficha" style="display:none">
+    <span class="voltar" onclick="voltarDash()">← voltar</span>
+    <div class="card">
+      <h2 id="f-nome">—</h2>
+      <div class="sub" id="f-sub">—</div>
+      <div class="fatos">
+        <div class="fato"><div class="k">Atividade principal</div><div class="v" id="f-cnae">—</div></div>
+        <div class="fato"><div class="k">Regime</div><div class="v" id="f-regime">—</div></div>
+        <div class="fato"><div class="k">Município</div><div class="v" id="f-mun">—</div></div>
+        <div class="fato"><div class="k">Abertura</div><div class="v" id="f-abert">—</div></div>
+      </div>
+      <div id="f-pills"></div>
+    </div>
+    <div class="card economia" id="card-eco" style="display:none">
+      <div style="font-size:13px;color:#6e6e73">Quanto a empresa paga de imposto por ano? R$ <input id="imp-ano" value="120000" oninput="calcEco()"></div>
+      <div class="n" id="eco-n">R$ 0</div>
+      <div style="font-size:12.5px;color:#6e6e73" id="eco-l">potencial de economia por ano</div>
+    </div>
+    <div class="card">
+      <h2>O que a reforma muda para esta empresa</h2>
+      <div class="sub">cada regra avaliada, uma a uma — LC 214/2025</div>
+      <div id="regras"></div>
+    </div>
+    <div class="card">
+      <h2>O que fazer agora</h2>
+      <div class="passo"><div class="num">1</div><div>Guarde este diagnóstico (copie a mensagem abaixo).</div></div>
+      <div class="passo"><div class="num">2</div><div>Envie para quem cuida da contabilidade com prazo. <b>Você não precisa entender — precisa cobrar.</b></div></div>
+      <div class="passo"><div class="num">3</div><div>Sem resposta clara em 7 dias? A empresa está mal assessorada — e isso custa dinheiro todo mês.</div></div>
+      <div style="text-align:center;margin-top:12px">
+        <button class="btn" onclick="copiarDelegacao(this)">📋 Copiar mensagem de cobrança</button>
+      </div>
+    </div>
+  </div>
+  <div id="msg"></div>
+</div>
 <script>
-let DADO = null;
-let AGG = null;
+let AGG = null, DADO = null;
 const $ = id => document.getElementById(id);
 const fmt = n => n == null ? "—" : Number(n).toLocaleString("pt-BR");
 async function api(path, opts){ return fetch(path, opts || {}); }
-function aba(v){
-  $("view-empresa").style.display = v === "empresa" ? "block" : "none";
-  $("view-gtm").style.display = v === "gtm" ? "block" : "none";
-  if (v === "gtm" && !AGG) carregarGtm();
-}
-function modoCarteira(e){ e.preventDefault(); const a = $("area-carteira"); a.style.display = a.style.display === "none" ? "block" : "none"; }
-
-async function analisar(){
-  const cnpj = $("cnpj").value.trim();
-  if (!cnpj){ msg("Digite o CNPJ 🙂"); return; }
-  $("btn-go").disabled = true; msg("Consultando na base oficial…");
-  try{
-    const r = await api("/api/radar/cnpj/" + encodeURIComponent(cnpj));
-    const d = await r.json();
-    if (!r.ok){ msg(d.erro || "CNPJ não encontrado — confira os números"); return; }
-    DADO = d;
-    renderFicha();
-    msg("");
-  }catch(e){ msg("Falha: " + e.message); }
-  finally{ $("btn-go").disabled = false; }
-}
-async function analisarCarteira(){ location.href = "/pro"; }
 function msg(t){ $("msg").textContent = t; }
 
+async function iniciar(){
+  const r = await api("/api/radar/analise");
+  const d = await r.json();
+  if (!r.ok){ msg("agregados em atualização; tente em instantes"); return; }
+  AGG = d;
+  $("conf-base").textContent = fmt(d.total) + " empresas de serviço em SP (" + (d.competencia || "") + ")";
+  renderAll();
+}
+function ticket(){ return parseFloat($("ticket").value) || 0; }
+function renderAll(){
+  if (!AGG) return;
+  const f = AGG.flags || {};
+  $("k-total").textContent = fmt(AGG.total);
+  $("k-127").textContent = fmt(f.elegivel_127 || 0);
+  $("k-128").textContent = fmt(f.elegivel_128 || 0);
+  $("k-sim").textContent = fmt(f.decisao_simples || 0);
+  const pot = ((f.elegivel_127 || 0) + (f.elegivel_128 || 0)) * ticket();
+  $("k-pot").textContent = "R$ " + fmt(pot);
+  const linhas = (AGG.top_cnaes || []).map(c => ({...c, pot: (c.eleg127 || 0) * ticket()}))
+    .sort((a, b) => b.pot - a.pot).slice(0, 30);
+  const max = Math.max(...linhas.map(c => c.pot), 1);
+  $("rank").innerHTML = linhas.map(c => {
+    const pct = Math.max(2, Math.round(c.pot / max * 100));
+    const cor = c.eleg127 > 0 ? "#0d7a3f" : "#c3ccd9";
+    return '<tr class="linha" onclick="drill(&quot;' + c.codigo + '&quot;, &quot;' + (c.descricao || "").replace(/"/g, "") + '&quot;)">'
+      + "<td><b>" + c.codigo + "</b> " + (c.descricao || "—") + "</td>"
+      + '<td class="td-num">' + fmt(c.n) + "</td>"
+      + '<td class="td-num">' + fmt(c.eleg127) + "</td>"
+      + '<td><div class="barra"><div style="width:' + pct + "%;background:" + cor + '"></div></div></td>'
+      + '<td class="td-num"><b>R$ ' + fmt(c.pot) + "</b></td></tr>";
+  }).join("");
+  $("muns").innerHTML = (AGG.top_municipios || []).slice(0, 12).map(m =>
+    '<tr><td>' + m.nome + '</td><td class="td-num">' + fmt(m.n) + '</td><td class="td-num" style="color:#86868b">' + fmt(m.simples) + " no Simples</td></tr>").join("");
+  const NOMES_PORTE = {"01":"Microempresa (ME)","03":"Empresa de pequeno porte","05":"Demais portes","00":"não informado"};
+  const portes = Object.entries(AGG.por_porte || {}).sort((a, b) => b[1].n - a[1].n);
+  const tot = portes.reduce((s, [, d]) => s + d.n, 0) || 1;
+  $("portes").innerHTML = portes.map(([cod, d]) => {
+    const pct = Math.round(d.n / tot * 100);
+    return "<tr><td>" + (NOMES_PORTE[cod] || cod) + '</td><td class="td-num">' + fmt(d.n) + '</td><td style="width:90px"><div class="barra"><div style="width:' + pct + '%;background:#0071e3"></div></div></td><td class="td-num">' + pct + "%</td></tr>";
+  }).join("");
+}
+function mostra(v){
+  $("dash").style.display = v === "dash" ? "block" : "none";
+  $("drill").style.display = v === "drill" ? "block" : "none";
+  $("ficha").style.display = v === "ficha" ? "block" : "none";
+}
+function voltarDash(){ mostra("dash"); }
+async function drill(cnae, desc){
+  mostra("drill");
+  $("drill-titulo").textContent = desc || cnae;
+  $("empresas").innerHTML = "<tr><td>carregando…</td></tr>";
+  const r = await api("/api/radar/explorar?cnae=" + cnae + "&limit=100");
+  const d = await r.json();
+  $("drill-sub").textContent = "amostra de " + (d.itens || []).length + " empresas do CNAE " + cnae + " · clique para abrir a ficha";
+  $("empresas").innerHTML = (d.itens || []).map(e =>
+    '<tr class="linha" onclick="abrirCnpj(&quot;' + e.cnpj + '&quot;)">'
+    + "<td>" + (e.razao_social || "—") + "</td><td>" + e.cnpj + "</td>"
+    + "<td>" + (e.municipio_codigo || "") + "/" + (e.uf || "") + "</td>"
+    + "<td>" + (e.simples === "S" ? '<span class="tag t-ambar">Simples</span>' : "—") + "</td>"
+    + "<td>" + (e.data_inicio && e.data_inicio.length === 8 ? e.data_inicio.slice(6,8) + "/" + e.data_inicio.slice(4,6) + "/" + e.data_inicio.slice(0,4) : "—") + "</td></tr>").join("");
+}
+function consultar(){ const c = $("cnpj").value.trim(); if (c) abrirCnpj(c); }
+async function abrirCnpj(cnpj){
+  msg("consultando…");
+  const r = await api("/api/radar/cnpj/" + encodeURIComponent(cnpj));
+  const d = await r.json();
+  msg("");
+  if (!r.ok){ alert(d.erro || "CNPJ não encontrado"); return; }
+  DADO = d;
+  renderFicha();
+}
 const PILLS = {
   elegivel_127: ["p-verde", "Pode pagar 30% menos"],
   elegivel_128: ["p-verde", "Pode pagar até 60% menos"],
@@ -1118,45 +1172,39 @@ const PILLS = {
   cnae_suspeito: ["p-amarela", "CNAE para revisar"],
   cnae_mudou: ["p-cinza", "CNAE mudou recentemente"]
 };
-
 function renderFicha(){
   const d = DADO, ev = d.evidencias || {};
-  $("resultado").style.display = "block";
+  mostra("ficha");
   $("f-nome").textContent = ev.razao_social || d.cnpj;
   $("f-sub").textContent = d.cnpj + (ev.matriz_filial === "2" ? " · filial" : "");
   $("f-cnae").textContent = (ev.cnae_principal || "—") + (ev.cnae_descricao ? " — " + ev.cnae_descricao : "");
-  $("f-regime").textContent = ev.simples === "S" ? "Simples Nacional" : ev.simples === "N" ? "Regime normal (presumido/real)" : "a confirmar";
+  $("f-regime").textContent = ev.simples === "S" ? "Simples Nacional" : ev.simples === "N" ? "Regime normal" : "a confirmar";
   $("f-mun").textContent = ev.municipio ? ev.municipio + (ev.uf ? "/" + ev.uf : "") : (ev.municipio_codigo || "—");
   const ab = ev.data_inicio;
   $("f-abert").textContent = ab && ab.length === 8 ? ab.slice(6,8) + "/" + ab.slice(4,6) + "/" + ab.slice(0,4) : "—";
   const flags = d.encontrado ? (d.flags || []) : [];
   $("f-pills").innerHTML = d.encontrado
     ? (flags.length ? flags.filter(f => PILLS[f]).map(f => '<span class="pill ' + PILLS[f][0] + '">' + PILLS[f][1] + "</span>").join("")
-                     : '<span class="pill p-cinza">Nenhum benefício identificado — veja o checklist abaixo</span>')
-    : '<span class="pill p-cinza">CNPJ não localizado na base</span>';
+                     : '<span class="pill p-cinza">Nenhum benefício identificado — veja o checklist</span>')
+    : '<span class="pill p-cinza">CNPJ não localizado</span>';
   const ICON = {se_aplica: ["i-sim", "✓"], nao_se_aplica: ["i-nao", "✕"], verificar: ["i-ver", "?"]};
-  const NOME_HUMANO = {se_aplica: "SE APLICA", nao_se_aplica: "não se aplica", verificar: "verificar"};
   $("regras").innerHTML = (d.regras || []).map(rg => {
     const [cls, ic] = ICON[rg.status] || ICON.verificar;
     return '<div class="regra"><div class="ico ' + cls + '">' + ic + "</div><div>"
-      + '<div class="nome">' + rg.nome + ' <span style="font-weight:400;color:#86868b;font-size:11px">· ' + NOME_HUMANO[rg.status] + "</span></div>"
+      + '<div class="nome">' + rg.nome + "</div>"
       + '<div class="det">' + rg.detalhe + "</div></div></div>";
   }).join("");
-  const temBeneficio = flags.includes("elegivel_127") || flags.includes("elegivel_128");
-  $("card-eco").style.display = temBeneficio ? "block" : "none";
+  const tem = flags.includes("elegivel_127") || flags.includes("elegivel_128");
+  $("card-eco").style.display = tem ? "block" : "none";
   calcEco();
-  window.scrollTo({top: $("resultado").offsetTop - 16, behavior: "smooth"});
+  window.scrollTo({top: 0, behavior: "smooth"});
 }
 function calcEco(){
   const d = DADO; if (!d) return;
   const imp = parseFloat(($("imp-ano").value || "0").replace(/[^0-9.,]/g, "").replace(",", ".")) || 0;
   const taxa = (d.flags || []).includes("elegivel_128") ? 0.60 : (d.flags || []).includes("elegivel_127") ? 0.30 : 0;
-  const aliquotaRef = 0.265;
-  const eco = imp * taxa;
-  $("eco-n").textContent = "R$ " + Math.round(eco).toLocaleString("pt-BR");
-  $("eco-l").textContent = taxa
-    ? "potencial de economia por ano (redução de " + Math.round(taxa*100) + "% sobre o imposto devido)"
-    : "sem redução aplicável";
+  $("eco-n").textContent = "R$ " + Math.round(imp * taxa).toLocaleString("pt-BR");
+  $("eco-l").textContent = taxa ? "potencial de economia por ano (redução de " + Math.round(taxa*100) + "%)" : "sem redução aplicável";
 }
 function copiarDelegacao(btn){
   const d = DADO, ev = (d && d.evidencias) || {};
@@ -1166,33 +1214,7 @@ function copiarDelegacao(btn){
     + "\n\nMe retorne com o parecer e o plano de ação até o fim desta semana, por favor.";
   navigator.clipboard.writeText(txt).then(() => { btn.textContent = "✅ Copiada!"; setTimeout(() => btn.textContent = "📋 Copiar mensagem de cobrança", 1800); });
 }
-async function carregarGtm(){
-  const r = await api("/api/radar/analise");
-  const d = await r.json();
-  if (!r.ok){ $("gtm-rows").innerHTML = "<tr><td>agregados em atualização; tente em instantes</td></tr>"; return; }
-  AGG = d;
-  renderGtm();
-}
-function renderGtm(){
-  if (!AGG) return;
-  const ticket = parseFloat($("gtm-ticket").value) || 0;
-  const f = AGG.flags || {};
-  $("gtm-total").textContent = fmt(AGG.total);
-  $("gtm-127").textContent = fmt(f.elegivel_127 || 0);
-  $("gtm-128").textContent = fmt(f.elegivel_128 || 0);
-  $("gtm-sim").textContent = fmt(f.decisao_simples || 0);
-  const linhas = (AGG.top_cnaes || []).map(c => {
-    const eleg = c.eleg127 || 0;
-    return {codigo: c.codigo, descricao: c.descricao || "—", n: c.n, eleg, pot: eleg * ticket};
-  }).sort((a, b) => b.pot - a.pot).slice(0, 40);
-  $("gtm-rows").innerHTML = linhas.map(c =>
-    "<tr><td style='padding:7px 6px;border-bottom:1px solid #f2f2f4'>" + c.codigo + "</td>"
-    + "<td style='padding:7px 6px;border-bottom:1px solid #f2f2f4'>" + c.descricao + "</td>"
-    + "<td style='padding:7px 6px;border-bottom:1px solid #f2f2f4;text-align:right'>" + fmt(c.n) + "</td>"
-    + "<td style='padding:7px 6px;border-bottom:1px solid #f2f2f4;text-align:right'>" + fmt(c.eleg) + "</td>"
-    + "<td style='padding:7px 6px;border-bottom:1px solid #f2f2f4;text-align:right'><b>R$ " + fmt(c.pot) + "</b></td></tr>").join("");
-}
-if (location.hash === "#gtm") aba("gtm");
+iniciar();
 </script></body></html>`;
 
 
