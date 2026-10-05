@@ -421,10 +421,10 @@ async function consultaCnpj(env: Env, cnpjRaw: string): Promise<Response> {
       fl.includes("elegivel_128")
         ? "Setor com redução de 60%; conferir o anexo correspondente (II ou III)."
         : "Fora das divisões de saúde (86-87), educação regular (Anexo II) e cultura/jornalismo."));
-    regras.push(regra("Decisão do Simples: CBS/IBS dentro ou fora do DAS (até set/2026)",
+    regras.push(regra("Decisão do Simples: CBS/IBS dentro ou fora do DAS (até 30/10/2026)",
       estab.simples === "S" ? "se_aplica" : estab.simples == null ? "verificar" : "nao_se_aplica",
       estab.simples === "S"
-        ? "Optante: simular os dois regimes; a escolha errada encarece a venda para PJ."
+        ? "Optante: simular os dois regimes até 30/10 no Portal do Simples; a escolha errada encarece a venda para PJ."
         : estab.simples == null
           ? "Opção pelo Simples não consta na base; confirmar no PGDAS-D."
           : "Não optante do Simples; decisão não se aplica."));
@@ -937,7 +937,7 @@ if (KEY){ iniciar(); } else { $("auth").style.display = "block"; }
 </script></body></html>`;
 
 
-const APP_HTML = `<!doctype html>
+const DASH_HTML = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Radar da Reforma — mapa do mercado</title>
@@ -1263,6 +1263,442 @@ iniciar();
 </script></body></html>`;
 
 
+const APP_HTML = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reforma tributária no seu negócio — serviços em SP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF1EF; --paper:#FFFFFF; --ink:#16302A; --muted:#566B65; --line:#CCD7D3;
+  --good:#24724F; --good-bg:#DCEFE5; --warn:#A86F00; --warn-bg:#FBEFCF; --risk:#A63C2A; --risk-bg:#F7E0DA;
+  --brand:#1F4D43; --brand-ink:#FFFFFF; --soft:#E3EAE7;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1C19; --paper:#16272300; --paper:#172824; --ink:#E6EFEC; --muted:#9DB2AC; --line:#2C4540;
+  --good:#6FCF9F; --good-bg:#183A2C; --warn:#F2C25A; --warn-bg:#3A2F12; --risk:#F09A85; --risk-bg:#3E211B;
+  --brand:#8FD3BC; --brand-ink:#0F1C19; --soft:#1F3530;}}
+:root[data-theme="dark"]{
+  --bg:#0F1C19; --paper:#172824; --ink:#E6EFEC; --muted:#9DB2AC; --line:#2C4540;
+  --good:#6FCF9F; --good-bg:#183A2C; --warn:#F2C25A; --warn-bg:#3A2F12; --risk:#F09A85; --risk-bg:#3E211B;
+  --brand:#8FD3BC; --brand-ink:#0F1C19; --soft:#1F3530;}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:var(--display);line-height:1.08;margin:0;letter-spacing:-.015em}
+h2{font-size:clamp(1.5rem,3vw,2.1rem);font-weight:700}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0}
+.muted{color:var(--muted)}
+a{color:var(--brand)}
+:focus-visible{outline:3px solid var(--warn);outline-offset:2px;border-radius:4px}
+
+/* hero */
+header.hero{background:var(--brand);color:var(--brand-ink);padding:56px 0 120px}
+.topline{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:.9rem;opacity:.85;margin-bottom:40px}
+.hero h1{font-size:clamp(2.2rem,6vw,4.4rem);font-weight:800;max-width:15ch}
+.hero .lede{font-size:1.15rem;max-width:58ch;margin-top:18px;opacity:.92}
+.picker{margin-top:-84px;background:var(--paper);border-radius:20px;padding:28px;box-shadow:0 18px 40px -24px rgba(10,40,30,.45);border:1px solid var(--line)}
+.picker-row{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+label.f{display:block;font-weight:600;font-size:.95rem;margin-bottom:6px}
+.combo{position:relative}
+input[type=search],select,input[type=number]{width:100%;font:inherit;font-size:1.05rem;padding:14px 16px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+input:focus,select:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
+.list{position:absolute;z-index:5;left:0;right:0;top:calc(100% + 6px);background:var(--paper);border:1px solid var(--line);border-radius:12px;max-height:320px;overflow:auto;box-shadow:0 14px 30px -18px rgba(0,0,0,.4);display:none}
+.list.open{display:block}
+.opt{padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;gap:12px;font-size:.95rem}
+.opt small{color:var(--muted);white-space:nowrap}
+.opt[aria-selected=true],.opt:hover{background:var(--soft)}
+.hint{font-size:.85rem;color:var(--muted);margin-top:8px}
+
+/* verdict */
+.verdict{margin-top:28px;display:grid;grid-template-columns:1.1fr 1fr;gap:28px;align-items:start}
+.verdict .lead{font-family:var(--display);font-size:clamp(1.35rem,2.6vw,1.9rem);font-weight:700;line-height:1.2}
+.verdict .lead b{font-weight:800}
+.peer{margin-top:14px;color:var(--muted)}
+.answers{display:grid;gap:10px}
+.ans{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:14px 16px;border-radius:14px;align-items:start}
+.ans .dot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:.95rem}
+.ans.good{background:var(--good-bg)} .ans.good .dot{background:var(--good);color:var(--paper)}
+.ans.warn{background:var(--warn-bg)} .ans.warn .dot{background:var(--warn);color:var(--paper)}
+.ans.risk{background:var(--risk-bg)} .ans.risk .dot{background:var(--risk);color:var(--paper)}
+.ans.neutral{background:var(--soft)} .ans.neutral .dot{background:var(--muted);color:var(--paper)}
+.ans h3{font-size:1rem;font-family:var(--body);font-weight:700}
+.ans p{font-size:.92rem;margin-top:2px}
+
+section{padding:64px 0 0}
+.sec-head{display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+.sec-head p{max-width:56ch}
+
+/* simulator */
+.sim{display:grid;grid-template-columns:1fr 1.3fr;gap:28px;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:28px}
+.fields{display:grid;gap:16px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{font:inherit;font-size:.92rem;padding:9px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.bars{display:grid;gap:18px;align-content:start}
+.bar-label{display:flex;justify-content:space-between;font-size:.95rem;margin-bottom:6px}
+.bar-label strong{font-family:var(--display);font-size:1.25rem}
+.track{height:22px;background:var(--soft);border-radius:6px;overflow:hidden}
+.fill{height:100%;border-radius:6px;transition:width .45s cubic-bezier(.2,.7,.2,1)}
+.save{margin-top:6px;padding:16px;border-radius:14px;background:var(--good-bg)}
+.save strong{font-family:var(--display);font-size:1.8rem;display:block;color:var(--good)}
+.fine{font-size:.82rem;color:var(--muted);margin-top:12px}
+
+/* panorama */
+.pano{display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--ink)}
+.pano > div{padding:20px 18px 20px 0;border-right:1px solid var(--line)}
+.pano > div + div{padding-left:18px}
+.pano > div:last-child{border-right:0}
+.pano .num{font-family:var(--display);font-size:clamp(1.8rem,3.4vw,2.6rem);font-weight:800;line-height:1}
+.pano .pct{font-weight:700;margin:6px 0 8px}
+.pano p.d{font-size:.92rem;color:var(--muted)}
+.c-good{color:var(--good)} .c-warn{color:var(--warn)} .c-risk{color:var(--risk)}
+
+/* porte */
+.porte{display:grid;gap:18px;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:28px}
+.prow{display:grid;grid-template-columns:200px 1fr 110px;gap:16px;align-items:center}
+.stack{display:flex;height:30px;border-radius:7px;overflow:hidden;background:var(--soft)}
+.stack span{height:100%}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* tables */
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:24px;min-width:0}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{text-align:left;font-weight:600;color:var(--muted);padding:8px 8px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.clickable{cursor:pointer}
+tr.clickable:hover td{background:var(--soft)}
+.chip{display:inline-block;font-size:.76rem;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.chip.g{background:var(--good-bg);color:var(--good)} .chip.w{background:var(--warn-bg);color:var(--warn)}
+
+/* steps */
+ol.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;counter-reset:s;border-top:2px solid var(--ink)}
+ol.steps li{counter-increment:s;padding:22px 20px 0 0}
+ol.steps li::before{content:counter(s);font-family:var(--display);font-weight:800;font-size:2.4rem;color:var(--brand);display:block;line-height:1;margin-bottom:10px}
+ol.steps li p{font-size:.93rem;color:var(--muted);margin-top:6px}
+.cta{margin-top:36px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:var(--brand);color:var(--brand-ink);border-radius:20px;padding:28px}
+.cta p{max-width:60ch}
+.btn{display:inline-block;background:var(--brand-ink);color:var(--brand);font-weight:700;padding:13px 20px;border-radius:12px;text-decoration:none}
+footer{padding:48px 0 40px;font-size:.85rem;color:var(--muted)}
+footer p+p{margin-top:8px}
+
+@media (max-width:900px){
+  .picker-row,.verdict,.sim,.twocol{grid-template-columns:1fr}
+  .pano{grid-template-columns:1fr 1fr}
+  .pano > div:nth-child(2){border-right:0}
+  .pano > div:nth-child(3){padding-left:0}
+  .pano > div:nth-child(n+3){border-top:1px solid var(--line)}
+  ol.steps{grid-template-columns:1fr 1fr}
+  .prow{grid-template-columns:1fr;gap:6px}
+}
+@media (max-width:520px){.pano,ol.steps{grid-template-columns:1fr}.pano > div{border-right:0;padding-left:0!important;border-top:1px solid var(--line)}.picker,.sim,.porte,.panel{padding:20px}}
+@media (prefers-reduced-motion:reduce){.fill{transition:none}}
+</style>
+</head>
+<body>
+<nav style="position:sticky;top:0;z-index:50;background:var(--paper);border-bottom:1px solid var(--line);padding:10px 18px;display:flex;gap:16px;align-items:center;font-family:var(--body);font-size:13px">
+  <strong style="color:var(--brand)">Radar da Reforma</strong>
+  <a href="/app" style="color:var(--ink);text-decoration:none;font-weight:600">Mapa</a>
+  <a href="/dash" style="color:var(--ink);text-decoration:none">Consultar CNPJ</a>
+  <a href="/pro" style="color:var(--ink);text-decoration:none">Subir carteira</a>
+</nav>
+<header class="hero">
+  <div class="wrap">
+    <div class="topline"><span>Radar da Reforma · serviços no estado de São Paulo</span><span id="comp"></span></div>
+    <h1>O que a reforma tributária muda no seu negócio</h1>
+    <p class="lede">Escolha o seu ramo e veja, com base nos dados da Receita Federal, se ele tem redução de imposto, quantas empresas iguais à sua existem em SP e o que você precisa decidir.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="picker" aria-live="polite">
+    <div class="picker-row">
+      <div>
+        <label class="f" for="q">Qual é o seu ramo de atividade?</label>
+        <div class="combo">
+          <input id="q" type="search" autocomplete="off" placeholder="Ex.: advocacia, contabilidade, salão, transporte…" role="combobox" aria-expanded="false" aria-controls="lst" aria-autocomplete="list">
+          <div class="list" id="lst" role="listbox"></div>
+        </div>
+        <p class="hint">Os 100 ramos com mais empresas em SP. Não achou o seu? Consulte pelo CNPJ no fim da página.</p>
+      </div>
+      <div>
+        <label class="f" for="city">Sua cidade</label>
+        <select id="city"></select>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div>
+        <p class="lead" id="lead"></p>
+        <p class="peer" id="peer"></p>
+      </div>
+      <div class="answers" id="answers"></div>
+    </div>
+  </div>
+
+  <section id="sim-sec">
+    <div class="sec-head">
+      <h2>Quanto isso pode pesar no caixa</h2>
+      <p class="muted">Ordem de grandeza do novo imposto sobre serviços (IBS + CBS) para o seu faturamento. A alíquota final ainda não foi fixada — ajuste o valor de referência se o seu contador tiver outro número.</p>
+    </div>
+    <div class="sim">
+      <div class="fields">
+        <div>
+          <label class="f" for="fat">Faturamento mensal (R$)</label>
+          <input id="fat" type="number" min="0" step="1000" value="80000" inputmode="numeric">
+        </div>
+        <div>
+          <label class="f" for="rate">Alíquota de referência IBS + CBS (%)</label>
+          <input id="rate" type="number" min="0" max="40" step="0.1" value="26.5" inputmode="decimal">
+        </div>
+        <div>
+          <span class="f" id="redlab">Redução que se aplica ao seu ramo</span>
+          <div class="seg" role="group" aria-labelledby="redlab" id="redseg">
+            <button type="button" data-r="0">Nenhuma</button>
+            <button type="button" data-r="30">30% (profissão regulamentada)</button>
+            <button type="button" data-r="60">60% (saúde, educação, cultura)</button>
+          </div>
+          <p class="hint" id="redhint"></p>
+        </div>
+      </div>
+      <div class="bars">
+        <div>
+          <div class="bar-label"><span>Sem redução</span><strong id="v0"></strong></div>
+          <div class="track"><div class="fill" id="b0" style="background:var(--muted)"></div></div>
+        </div>
+        <div>
+          <div class="bar-label"><span>Com a redução do seu ramo</span><strong id="v1"></strong></div>
+          <div class="track"><div class="fill" id="b1" style="background:var(--good)"></div></div>
+        </div>
+        <div class="save"><span>Diferença por ano</span><strong id="v2"></strong></div>
+        <p class="fine">Cálculo simplificado: faturamento × alíquota × (1 − redução). Não considera créditos de insumos, a transição gradual 2026–2033 nem o regime do Simples, que muda a conta. Use para conversar com o contador, não para decidir sozinho.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>O retrato dos serviços em SP</h2>
+      <p class="muted" id="pano-sub"></p>
+    </div>
+    <div class="pano" id="pano"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Por tamanho de empresa</h2>
+      <p class="muted">Quanto menor a empresa, mais ela depende do Simples — e mais pesa a decisão de ficar dentro ou fora dele no novo sistema.</p>
+    </div>
+    <div class="porte">
+      <div class="legend"><span><i style="background:var(--warn)"></i>MEI</span><span><i style="background:color-mix(in srgb,var(--warn) 45%,var(--paper))"></i>Simples (sem MEI)</span><span><i style="background:var(--soft);border:1px solid var(--line)"></i>Fora do Simples</span></div>
+      <div id="porte"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Onde estão os ramos com redução</h2>
+      <p class="muted">Clique numa linha para ver o ramo no topo da página.</p>
+    </div>
+    <div class="twocol">
+      <div class="panel">
+        <h3>Ramos com redução de imposto</h3>
+        <p class="muted" style="font-size:.9rem;margin:4px 0 14px">Os 12 maiores entre os 100 ramos mais populosos de SP. * só se for ensino regular.</p>
+        <div class="scroll"><table id="t-benef"><thead><tr><th>Ramo</th><th>Redução</th><th class="n">Empresas</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="panel">
+        <h3>Cidades com mais profissionais regulamentados</h3>
+        <p class="muted" style="font-size:.9rem;margin:4px 0 14px">Empresas com direito à redução de 30%.</p>
+        <div class="scroll"><table id="t-city"><thead><tr><th>Cidade</th><th class="n">Com redução 30%</th><th class="n">% da cidade</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>O que fazer agora</h2></div>
+    <ol class="steps">
+      <li><h3>Confira o seu CNAE</h3><p>É o código da atividade no cartão CNPJ. É ele que define se você tem redução. Atividade principal errada pode custar o benefício.</p></li>
+      <li><h3>Decida sobre o Simples</h3><p>Optantes escolhem recolher IBS/CBS dentro ou fora do DAS. Fora, você gera crédito para clientes empresas; dentro, paga menos burocracia.</p></li>
+      <li><h3>Ajuste sua emissão de notas</h3><p>A nota fiscal de serviço passa a destacar IBS e CBS. Fale com quem emite suas notas e teste o sistema.</p></li>
+      <li><h3>Revise preços e contratos</h3><p>Com o pagamento dividido automático (split payment), o imposto sai na hora da venda. Isso muda o seu caixa e os contratos longos.</p></li>
+    </ol>
+    <div class="cta">
+      <p><strong>Quer a ficha da sua empresa?</strong> Digite o seu CNPJ no Radar e veja as 8 regras aplicadas ao seu caso: redução, Simples, nota fiscal, coerência do CNAE e mais.</p>
+      <a class="btn" href="/dash" target="_blank" rel="noopener">Consultar meu CNPJ</a>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p id="foot"></p>
+  <p>Regras: LC 214/2025 (arts. 126–130) com alterações da LC 227/2026. Redução de 60% por ramo é indicativa (saúde, educação regular, cultura e jornalismo); educação exige verificar se é ensino regular. Material informativo, não substitui orientação contábil ou jurídica.</p>
+</footer>
+
+<script>
+const D = window.__AGG__ || {"build_id":"2026-09-SP-c64c3319-fix1","competencia":"2026-09","total":5775684,"flags":{"elegivel_127":205582,"elegivel_128":537066,"decisao_simples":4285145,"cnae_suspeito":104042},"por_porte":{"01":{"n":4638176,"simples":3989631,"mei":2727508,"eleg127":121706},"05":{"n":775622,"simples":77178,"mei":3,"eleg127":62712},"03":{"n":361886,"simples":218336,"mei":13,"eleg127":21164}},"top_cnaes":[{"codigo":"8219999","descricao":"Preparação de documentos e serviços especializados de apoio administrativo não especificados anteriormente","n":287405,"simples":264070,"mei":202677,"eleg127":0},{"codigo":"9602501","descricao":"Cabeleireiros, manicure e pedicure","n":277641,"simples":247565,"mei":238543,"eleg127":0},{"codigo":"7319002","descricao":"Promoção de vendas","n":253126,"simples":229337,"mei":192841,"eleg127":0},{"codigo":"4930201","descricao":"Transporte rodoviário de carga, exceto produtos perigosos e mudanças, municipal.","n":188695,"simples":165126,"mei":158496,"eleg127":0},{"codigo":"8211300","descricao":"Serviços combinados de escritório e apoio administrativo","n":150450,"simples":116238,"mei":5,"eleg127":0},{"codigo":"4930202","descricao":"Transporte rodoviário de carga, exceto produtos perigosos e mudanças, intermunicipal, interestadual e internacional","n":138815,"simples":109011,"mei":83028,"eleg127":0},{"codigo":"5611203","descricao":"Lanchonetes, casas de chá, de sucos e similares","n":129257,"simples":102628,"mei":65143,"eleg127":0},{"codigo":"5320202","descricao":"Serviços de entrega rápida","n":122090,"simples":110045,"mei":109681,"eleg127":0},{"codigo":"5620104","descricao":"Fornecimento de alimentos preparados preponderantemente para consumo domiciliar","n":121954,"simples":107414,"mei":97775,"eleg127":0},{"codigo":"8599699","descricao":"Outras atividades de ensino não especificadas anteriormente","n":115758,"simples":107696,"mei":98799,"eleg127":0},{"codigo":"5320201","descricao":"Serviços de malote não realizados pelo Correio Nacional","n":112410,"simples":106954,"mei":107443,"eleg127":0},{"codigo":"9602502","descricao":"Atividades de estética e outros serviços de cuidados com a beleza","n":112256,"simples":99516,"mei":88108,"eleg127":0},{"codigo":"8599604","descricao":"Treinamento em desenvolvimento profissional e gerencial","n":108249,"simples":95043,"mei":53648,"eleg127":0},{"codigo":"5611201","descricao":"Restaurantes e similares","n":106251,"simples":81655,"mei":49233,"eleg127":0},{"codigo":"4923002","descricao":"Serviço de transporte de passageiros - locação de automóveis com motorista","n":98890,"simples":96020,"mei":96643,"eleg127":0},{"codigo":"8230001","descricao":"Serviços de organização de feiras, congressos, exposições e festas","n":91993,"simples":79023,"mei":60783,"eleg127":0},{"codigo":"8112500","descricao":"Condomínios prediais","n":84853,"simples":0,"mei":0,"eleg127":0},{"codigo":"8630503","descricao":"Atividade médica ambulatorial restrita a consultas","n":71024,"simples":37438,"mei":0,"eleg127":0},{"codigo":"6462000","descricao":"Holdings de instituições não-financeiras","n":68996,"simples":1,"mei":0,"eleg127":0},{"codigo":"7020400","descricao":"Atividades de consultoria em gestão empresarial, exceto consultoria técnica específica","n":67676,"simples":38150,"mei":3,"eleg127":0},{"codigo":"5612100","descricao":"Serviços ambulantes de alimentação","n":66222,"simples":59914,"mei":57918,"eleg127":0},{"codigo":"8712300","descricao":"Atividades de fornecimento de infra-estrutura de apoio e assistência a paciente no domicílio","n":60659,"simples":55561,"mei":55308,"eleg127":0},{"codigo":"9511800","descricao":"Reparação e manutenção de computadores e de equipamentos periféricos","n":55913,"simples":50039,"mei":39013,"eleg127":0},{"codigo":"6911701","descricao":"Serviços advocatícios","n":55907,"simples":46831,"mei":0,"eleg127":55907},{"codigo":"9491000","descricao":"Atividades de organizações religiosas ou filosóficas","n":54901,"simples":1,"mei":0,"eleg127":0},{"codigo":"7112000","descricao":"Serviços de engenharia","n":45435,"simples":29493,"mei":1,"eleg127":45435},{"codigo":"5912099","descricao":"Atividades de pós-produção cinematográfica, de vídeos e de programas de televisão não especificadas anteriormente","n":44379,"simples":41588,"mei":35794,"eleg127":0},{"codigo":"4781400","descricao":"Comércio varejista de artigos do vestuário e acessórios","n":44327,"simples":36920,"mei":27240,"eleg127":0},{"codigo":"8650003","descricao":"Atividades de psicologia e psicanálise","n":43087,"simples":37015,"mei":0,"eleg127":0},{"codigo":"9430800","descricao":"Atividades de associações de defesa de direitos sociais","n":42181,"simples":1,"mei":0,"eleg127":0},{"codigo":"6209100","descricao":"Suporte técnico, manutenção e outros serviços em tecnologia da informação","n":41097,"simples":32193,"mei":0,"eleg127":0},{"codigo":"6204000","descricao":"Consultoria em tecnologia da informação","n":36937,"simples":26954,"mei":1,"eleg127":0},{"codigo":"8630504","descricao":"Atividade odontológica","n":33669,"simples":25438,"mei":0,"eleg127":0},{"codigo":"5611204","descricao":"Bares e outros estabelecimentos especializados em servir bebidas, sem entretenimento","n":33631,"simples":28599,"mei":22461,"eleg127":0},{"codigo":"7420001","descricao":"Atividades de produção de fotografias, exceto aérea e submarina","n":32667,"simples":29516,"mei":24727,"eleg127":0},{"codigo":"4321500","descricao":"Instalação e manutenção elétrica","n":32007,"simples":26310,"mei":19242,"eleg127":0},{"codigo":"5819100","descricao":"Edição de cadastros, listas e de outros produtos gráficos","n":31938,"simples":29785,"mei":26559,"eleg127":0},{"codigo":"6821801","descricao":"Corretagem na compra e venda e avaliação de imóveis","n":31672,"simples":24885,"mei":1,"eleg127":0},{"codigo":"6810202","descricao":"Aluguel de imóveis próprios","n":31080,"simples":18,"mei":0,"eleg127":0},{"codigo":"6622300","descricao":"Corretores e agentes de seguros, de planos de previdência complementar e de saúde","n":30254,"simples":23180,"mei":2,"eleg127":0},{"codigo":"6920601","descricao":"Atividades de contabilidade","n":30120,"simples":24205,"mei":1,"eleg127":30120},{"codigo":"6810201","descricao":"Compra e venda de imóveis próprios","n":29718,"simples":1691,"mei":0,"eleg127":0},{"codigo":"8130300","descricao":"Atividades paisagísticas","n":29712,"simples":26225,"mei":23234,"eleg127":0},{"codigo":"6201501","descricao":"Desenvolvimento de programas de computador sob encomenda","n":29434,"simples":21426,"mei":0,"eleg127":0},{"codigo":"4712100","descricao":"Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios - minimercados, mercearias e armazéns","n":28654,"simples":21438,"mei":10301,"eleg127":0},{"codigo":"7490104","descricao":"Atividades de intermediação e agenciamento de serviços e negócios em geral, exceto imobiliários","n":28048,"simples":15675,"mei":0,"eleg127":0},{"codigo":"8299799","descricao":"Outras atividades de serviços prestados principalmente às empresas não especificadas anteriormente","n":28025,"simples":18415,"mei":3978,"eleg127":0},{"codigo":"8291100","descricao":"Atividades de cobranças e informações cadastrais","n":27894,"simples":21288,"mei":11936,"eleg127":0},{"codigo":"9001902","descricao":"Produção musical","n":27421,"simples":24616,"mei":20880,"eleg127":0},{"codigo":"7911200","descricao":"Agências de viagens","n":27078,"simples":23412,"mei":14570,"eleg127":0},{"codigo":"4723700","descricao":"Comércio varejista de bebidas","n":26663,"simples":22248,"mei":16706,"eleg127":0},{"codigo":"1091102","descricao":"Fabricação de produtos de padaria e confeitaria com predominância de produção própria","n":25661,"simples":22721,"mei":20274,"eleg127":0},{"codigo":"6470101","descricao":"Fundos de investimento, exceto previdenciários e imobiliários","n":24829,"simples":0,"mei":0,"eleg127":0},{"codigo":"8592999","descricao":"Ensino de arte e cultura não especificado anteriormente","n":24200,"simples":22225,"mei":20993,"eleg127":0},{"codigo":"9609208","descricao":"Higiene e embelezamento de animais domésticos","n":23622,"simples":21298,"mei":18620,"eleg127":0},{"codigo":"4110700","descricao":"Incorporação de empreendimentos imobiliários","n":22538,"simples":1,"mei":1,"eleg127":0},{"codigo":"4751201","descricao":"Comércio varejista especializado de equipamentos e suprimentos de informática","n":22128,"simples":17234,"mei":7324,"eleg127":0},{"codigo":"4399103","descricao":"Obras de alvenaria","n":21279,"simples":17434,"mei":13987,"eleg127":0},{"codigo":"7319003","descricao":"Marketing direto","n":21090,"simples":16665,"mei":0,"eleg127":0},{"codigo":"4729699","descricao":"Comércio varejista de produtos alimentícios em geral ou especializado em produtos alimentícios não especificados anteriormente","n":21043,"simples":16675,"mei":8665,"eleg127":0},{"codigo":"9313100","descricao":"Atividades de condicionamento físico","n":20940,"simples":16794,"mei":1,"eleg127":20940},{"codigo":"8650004","descricao":"Atividades de fisioterapia","n":20504,"simples":17259,"mei":0,"eleg127":0},{"codigo":"8599603","descricao":"Treinamento em informática","n":19041,"simples":17535,"mei":12594,"eleg127":0},{"codigo":"5212500","descricao":"Carga e descarga","n":19011,"simples":17275,"mei":16460,"eleg127":0},{"codigo":"4120400","descricao":"Construção de edifícios","n":19007,"simples":7551,"mei":0,"eleg127":0},{"codigo":"9492800","descricao":"Atividades de organizações políticas","n":18972,"simples":0,"mei":0,"eleg127":0},{"codigo":"5611205","descricao":"Bares e outros estabelecimentos especializados em servir bebidas, com entretenimento","n":18924,"simples":16192,"mei":13926,"eleg127":0},{"codigo":"5620101","descricao":"Fornecimento de alimentos preparados preponderantemente para empresas","n":18892,"simples":12729,"mei":10683,"eleg127":0},{"codigo":"4772500","descricao":"Comércio varejista de cosméticos, produtos de perfumaria e de higiene pessoal","n":18699,"simples":14411,"mei":9576,"eleg127":0},{"codigo":"4789099","descricao":"Comércio varejista de outros produtos não especificados anteriormente","n":18530,"simples":14477,"mei":5823,"eleg127":0},{"codigo":"9499500","descricao":"Atividades associativas não especificadas anteriormente","n":18243,"simples":0,"mei":0,"eleg127":0},{"codigo":"6463800","descricao":"Outras sociedades de participação, exceto holdings","n":16872,"simples":2,"mei":0,"eleg127":0},{"codigo":"7500100","descricao":"Atividades veterinárias","n":16786,"simples":14402,"mei":1,"eleg127":16786},{"codigo":"4924800","descricao":"Transporte escolar","n":16717,"simples":14841,"mei":11419,"eleg127":0},{"codigo":"5223100","descricao":"Estacionamento de veículos","n":16619,"simples":11397,"mei":3893,"eleg127":0},{"codigo":"6822600","descricao":"Gestão e administração da propriedade imobiliária","n":16400,"simples":7413,"mei":0,"eleg127":0},{"codigo":"9512600","descricao":"Reparação e manutenção de equipamentos de comunicação","n":16189,"simples":13650,"mei":11550,"eleg127":0},{"codigo":"5620102","descricao":"Serviços de alimentação para eventos e recepções - bufê","n":15888,"simples":13356,"mei":9936,"eleg127":0},{"codigo":"8630599","descricao":"Atividades de atenção ambulatorial não especificadas anteriormente","n":15488,"simples":11658,"mei":0,"eleg127":0},{"codigo":"6202300","descricao":"Desenvolvimento e licenciamento de programas de computador customizáveis","n":15317,"simples":10646,"mei":0,"eleg127":0},{"codigo":"7111100","descricao":"Serviços de arquitetura","n":15220,"simples":11550,"mei":0,"eleg127":15220},{"codigo":"8593700","descricao":"Ensino de idiomas","n":13932,"simples":12369,"mei":8398,"eleg127":0},{"codigo":"4752100","descricao":"Comércio varejista especializado de equipamentos de telefonia e comunicação","n":13882,"simples":10331,"mei":4576,"eleg127":0},{"codigo":"4929901","descricao":"Transporte rodoviário coletivo de passageiros, sob regime de fretamento, municipal","n":13820,"simples":10642,"mei":9647,"eleg127":0},{"codigo":"4789004","descricao":"Comércio varejista de animais vivos e de artigos e alimentos para animais de estimação","n":13749,"simples":11119,"mei":5497,"eleg127":0},{"codigo":"9700500","descricao":"Serviços domésticos","n":13641,"simples":12887,"mei":12961,"eleg127":0},{"codigo":"9609299","descricao":"Outras atividades de serviços pessoais não especificadas anteriormente","n":13544,"simples":11850,"mei":9945,"eleg127":0},{"codigo":"9521500","descricao":"Reparação e manutenção de equipamentos eletroeletrônicos de uso pessoal e doméstico","n":13382,"simples":11264,"mei":8565,"eleg127":0},{"codigo":"5811500","descricao":"Edição de livros","n":13325,"simples":11321,"mei":8038,"eleg127":0},{"codigo":"5911199","descricao":"Atividades de produção cinematográfica, de vídeos e de programas de televisão não especificadas anteriormente","n":12539,"simples":10115,"mei":1,"eleg127":0},{"codigo":"7311400","descricao":"Agências de publicidade","n":12327,"simples":7713,"mei":1,"eleg127":0},{"codigo":"4511102","descricao":"Comércio a varejo de automóveis, camionetas e utilitários usados","n":11752,"simples":2531,"mei":0,"eleg127":0},{"codigo":"6311900","descricao":"Tratamento de dados, provedores de serviços de aplicação e serviços de hospedagem na internet","n":11743,"simples":7718,"mei":0,"eleg127":0},{"codigo":"4923001","descricao":"Serviço de táxi","n":11694,"simples":10579,"mei":10346,"eleg127":0},{"codigo":"9001906","descricao":"Atividades de sonorização e de iluminação","n":11653,"simples":10309,"mei":8711,"eleg127":0},{"codigo":"6190699","descricao":"Outras atividades de telecomunicações não especificadas anteriormente","n":11499,"simples":10023,"mei":8428,"eleg127":0},{"codigo":"6319400","descricao":"Portais, provedores de conteúdo e outros serviços de informação na internet","n":11345,"simples":8304,"mei":1,"eleg127":0},{"codigo":"4930204","descricao":"Transporte rodoviário de mudanças","n":11197,"simples":10011,"mei":9530,"eleg127":0},{"codigo":"9609206","descricao":"Serviços de tatuagem e colocação de piercing","n":11039,"simples":9670,"mei":9191,"eleg127":0},{"codigo":"8610102","descricao":"Atividades de atendimento em pronto-socorro e unidades hospitalares para atendimento a urgências","n":10402,"simples":6298,"mei":0,"eleg127":0}],"top_municipios":[{"codigo":"7107","nome":"SAO PAULO","n":2087553,"simples":1497333,"mei":817020,"eleg127":84493},{"codigo":"6291","nome":"CAMPINAS","n":179903,"simples":134275,"mei":82318,"eleg127":7415},{"codigo":"6477","nome":"GUARULHOS","n":149971,"simples":113536,"mei":87725,"eleg127":3607},{"codigo":"6969","nome":"RIBEIRAO PRETO","n":117448,"simples":84671,"mei":52260,"eleg127":4851},{"codigo":"7075","nome":"SAO BERNARDO DO CAMPO","n":101701,"simples":77360,"mei":48597,"eleg127":3746},{"codigo":"7145","nome":"SOROCABA","n":101692,"simples":77981,"mei":51472,"eleg127":3551},{"codigo":"7057","nome":"SANTO ANDRE","n":97000,"simples":74698,"mei":45820,"eleg127":3870},{"codigo":"7099","nome":"SAO JOSE DOS CAMPOS","n":95226,"simples":72995,"mei":47329,"eleg127":3760},{"codigo":"6789","nome":"OSASCO","n":91613,"simples":68263,"mei":49013,"eleg127":2301},{"codigo":"7097","nome":"SAO JOSE DO RIO PRETO","n":76497,"simples":55055,"mei":34625,"eleg127":2970},{"codigo":"7071","nome":"SANTOS","n":70865,"simples":48516,"mei":30360,"eleg127":3037},{"codigo":"6619","nome":"JUNDIAI","n":70087,"simples":53410,"mei":31453,"eleg127":2865},{"codigo":"6213","nome":"BARUERI","n":69638,"simples":41639,"mei":22329,"eleg127":2943},{"codigo":"6713","nome":"MOGI DAS CRUZES","n":52442,"simples":39852,"mei":27469,"eleg127":1959},{"codigo":"6219","nome":"BAURU","n":51624,"simples":39561,"mei":27926,"eleg127":1828},{"codigo":"6875","nome":"PIRACICABA","n":48376,"simples":37223,"mei":24504,"eleg127":1894},{"codigo":"6921","nome":"PRAIA GRANDE","n":44884,"simples":34096,"mei":28210,"eleg127":832},{"codigo":"6425","nome":"FRANCA","n":40384,"simples":31249,"mei":19704,"eleg127":1270},{"codigo":"6361","nome":"COTIA","n":37257,"simples":28005,"mei":18810,"eleg127":1303},{"codigo":"6377","nome":"DIADEMA","n":36950,"simples":29649,"mei":23487,"eleg127":803},{"codigo":"6511","nome":"INDAIATUBA","n":36857,"simples":24792,"mei":17029,"eleg127":1293},{"codigo":"6313","nome":"CARAPICUIBA","n":36128,"simples":29789,"mei":24099,"eleg127":583},{"codigo":"6639","nome":"LIMEIRA","n":35506,"simples":27760,"mei":19542,"eleg127":1093},{"codigo":"7183","nome":"TAUBATE","n":35451,"simples":27403,"mei":19662,"eleg127":1345},{"codigo":"7121","nome":"SAO VICENTE","n":33723,"simples":27818,"mei":24233,"eleg127":487},{"codigo":"7079","nome":"SAO CARLOS","n":32788,"simples":24264,"mei":15588,"eleg127":1330},{"codigo":"6689","nome":"MAUA","n":32728,"simples":26540,"mei":21229,"eleg127":710},{"codigo":"7077","nome":"SAO CAETANO DO SUL","n":32436,"simples":22862,"mei":10886,"eleg127":1551},{"codigo":"6131","nome":"AMERICANA","n":32346,"simples":23696,"mei":14591,"eleg127":1290},{"codigo":"6475","nome":"GUARUJA","n":31839,"simples":24342,"mei":20035,"eleg127":634},{"codigo":"7151","nome":"SUZANO","n":30690,"simples":24828,"mei":18586,"eleg127":834},{"codigo":"6681","nome":"MARILIA","n":30108,"simples":22840,"mei":16358,"eleg127":1047},{"codigo":"7157","nome":"TABOAO DA SERRA","n":30101,"simples":24065,"mei":18118,"eleg127":785},{"codigo":"6929","nome":"PRESIDENTE PRUDENTE","n":29553,"simples":21462,"mei":13864,"eleg127":1264},{"codigo":"7149","nome":"SUMARE","n":29337,"simples":23956,"mei":18419,"eleg127":596},{"codigo":"6163","nome":"ARARAQUARA","n":28502,"simples":21930,"mei":14446,"eleg127":1125},{"codigo":"2951","nome":"HORTOLANDIA","n":26615,"simples":21936,"mei":17029,"eleg127":601},{"codigo":"6563","nome":"ITAQUAQUECETUBA","n":26253,"simples":21537,"mei":18298,"eleg127":411},{"codigo":"6589","nome":"JACAREI","n":25777,"simples":19880,"mei":14708,"eleg127":816},{"codigo":"6155","nome":"ARACATUBA","n":25571,"simples":19090,"mei":12573,"eleg127":991},{"codigo":"6181","nome":"ATIBAIA","n":25083,"simples":18582,"mei":11991,"eleg127":838},{"codigo":"7047","nome":"SANTANA DE PARNAIBA","n":24541,"simples":15779,"mei":8736,"eleg127":981},{"codigo":"6401","nome":"EMBU DAS ARTES","n":23496,"simples":18880,"mei":15674,"eleg127":384},{"codigo":"6251","nome":"BRAGANCA PAULISTA","n":22644,"simples":17531,"mei":11696,"eleg127":827},{"codigo":"6979","nome":"RIO CLARO","n":20226,"simples":15240,"mei":9913,"eleg127":726},{"codigo":"6579","nome":"ITU","n":19536,"simples":14516,"mei":9706,"eleg127":631},{"codigo":"6551","nome":"ITAPEVI","n":18935,"simples":15221,"mei":12808,"eleg127":303},{"codigo":"7225","nome":"VALINHOS","n":18910,"simples":14217,"mei":8692,"eleg127":729},{"codigo":"6249","nome":"BOTUCATU","n":17200,"simples":13266,"mei":9050,"eleg127":692},{"codigo":"7017","nome":"SANTA BARBARA D'OESTE","n":16799,"simples":13473,"mei":9764,"eleg127":448},{"codigo":"6311","nome":"CARAGUATATUBA","n":16286,"simples":12115,"mei":8893,"eleg127":444},{"codigo":"6831","nome":"PAULINIA","n":15170,"simples":11424,"mei":7063,"eleg127":595},{"codigo":"6715","nome":"MOGI GUACU","n":15041,"simples":11699,"mei":8192,"eleg127":453},{"codigo":"7135","nome":"SERTAOZINHO","n":14648,"simples":10942,"mei":6939,"eleg127":611},{"codigo":"6861","nome":"PINDAMONHANGABA","n":14639,"simples":11354,"mei":8240,"eleg127":535},{"codigo":"6547","nome":"ITAPETININGA","n":14149,"simples":11067,"mei":7858,"eleg127":452},{"codigo":"7005","nome":"SALTO","n":13908,"simples":11080,"mei":7735,"eleg127":418},{"codigo":"6545","nome":"ITAPECERICA DA SERRA","n":13747,"simples":10987,"mei":9080,"eleg127":204},{"codigo":"6209","nome":"BARRETOS","n":13741,"simples":9852,"mei":6704,"eleg127":541},{"codigo":"6165","nome":"ARARAS","n":13380,"simples":10381,"mei":7133,"eleg127":499},{"codigo":"7209","nome":"UBATUBA","n":13364,"simples":9964,"mei":7125,"eleg127":277},{"codigo":"6415","nome":"FERRAZ DE VASCONCELOS","n":13343,"simples":11037,"mei":9454,"eleg127":222},{"codigo":"6323","nome":"CATANDUVA","n":13191,"simples":9824,"mei":6057,"eleg127":513},{"codigo":"6569","nome":"ITATIBA","n":13146,"simples":10061,"mei":6633,"eleg127":479},{"codigo":"7243","nome":"VOTORANTIM","n":13092,"simples":10304,"mei":7868,"eleg127":321},{"codigo":"6607","nome":"JAU","n":12641,"simples":9489,"mei":6312,"eleg127":403},{"codigo":"7237","nome":"VINHEDO","n":12360,"simples":8737,"mei":5102,"eleg127":470},{"codigo":"6179","nome":"ASSIS","n":12242,"simples":9002,"mei":5780,"eleg127":512},{"codigo":"6897","nome":"POA","n":11866,"simples":8971,"mei":6812,"eleg127":343},{"codigo":"7181","nome":"TATUI","n":11729,"simples":9229,"mei":6687,"eleg127":318},{"codigo":"6229","nome":"BIRIGUI","n":11378,"simples":8880,"mei":6145,"eleg127":321},{"codigo":"6543","nome":"ITANHAEM","n":11244,"simples":8956,"mei":7203,"eleg127":212},{"codigo":"6427","nome":"FRANCISCO MORATO","n":11190,"simples":9411,"mei":8204,"eleg127":145},{"codigo":"6469","nome":"GUARATINGUETA","n":11142,"simples":8656,"mei":6019,"eleg127":385},{"codigo":"6285","nome":"CAJAMAR","n":10981,"simples":8230,"mei":5753,"eleg127":308},{"codigo":"6601","nome":"JANDIRA","n":10978,"simples":8712,"mei":6779,"eleg127":255},{"codigo":"6795","nome":"OURINHOS","n":10976,"simples":8508,"mei":5392,"eleg127":387},{"codigo":"6429","nome":"FRANCO DA ROCHA","n":10664,"simples":8663,"mei":7208,"eleg127":184},{"codigo":"6967","nome":"RIBEIRAO PIRES","n":10653,"simples":8346,"mei":6140,"eleg127":313},{"codigo":"6371","nome":"CUBATAO","n":10592,"simples":8002,"mei":6676,"eleg127":208},{"codigo":"6177","nome":"ARUJA","n":10348,"simples":7752,"mei":5445,"eleg127":307},{"codigo":"7083","nome":"SAO JOAO DA BOA VISTA","n":10340,"simples":7764,"mei":5071,"eleg127":379},{"codigo":"7233","nome":"VARZEA PAULISTA","n":10200,"simples":8529,"mei":7007,"eleg127":175},{"codigo":"7245","nome":"VOTUPORANGA","n":10138,"simples":7892,"mei":5125,"eleg127":364},{"codigo":"6717","nome":"MOGI MIRIM","n":10009,"simples":7250,"mei":4566,"eleg127":428},{"codigo":"7113","nome":"SAO ROQUE","n":9897,"simples":7336,"mei":4629,"eleg127":338},{"codigo":"7115","nome":"SAO SEBASTIAO","n":9889,"simples":6961,"mei":4601,"eleg127":258},{"codigo":"6281","nome":"CAIEIRAS","n":9732,"simples":7684,"mei":5818,"eleg127":280},{"codigo":"6635","nome":"LEME","n":9691,"simples":7501,"mei":5376,"eleg127":296},{"codigo":"6671","nome":"MAIRIPORA","n":9009,"simples":6928,"mei":4908,"eleg127":204},{"codigo":"6189","nome":"AVARE","n":8985,"simples":6788,"mei":4686,"eleg127":329},{"codigo":"6581","nome":"ITUPEVA","n":8465,"simples":6237,"mei":4187,"eleg127":228},{"codigo":"2965","nome":"BERTIOGA","n":8346,"simples":5883,"mei":4045,"eleg127":205},{"codigo":"6271","nome":"CACAPAVA","n":8242,"simples":6519,"mei":4792,"eleg127":262},{"codigo":"6853","nome":"PERUIBE","n":8066,"simples":6331,"mei":4702,"eleg127":206},{"codigo":"6595","nome":"JAGUARIUNA","n":8024,"simples":5659,"mei":3715,"eleg127":276},{"codigo":"6221","nome":"BEBEDOURO","n":7897,"simples":5920,"mei":3678,"eleg127":315},{"codigo":"6239","nome":"BOITUVA","n":7888,"simples":5893,"mei":3832,"eleg127":250},{"codigo":"6549","nome":"ITAPEVA","n":7833,"simples":5789,"mei":3887,"eleg127":293},{"codigo":"6687","nome":"MATAO","n":7776,"simples":5735,"mei":3782,"eleg127":272}]};
+const fmt = n => n.toLocaleString('pt-BR');
+const pct = (a,b) => b ? (a/b*100) : 0;
+const pf = (x,d=0) => x.toLocaleString('pt-BR',{maximumFractionDigits:d,minimumFractionDigits:d})+'%';
+const brl = n => n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const title = s => s.toLowerCase().replace(/(^|\\s|-|\\()(\\p{L})/gu,(m,a,b)=>a+b.toUpperCase()).replace(/\\b(De|Da|Do|Das|Dos|E|Em)\\b/g,w=>w.toLowerCase());
+
+const div = c => +c.codigo.slice(0,2);
+function reducao(c){
+  if (c.eleg127>0) return {r:30, why:'profissão regulamentada (art. 127)'};
+  const d = div(c);
+  if ([86,87,58,59,60,90,91,92].includes(d)) return {r:60, why: d>=86&&d<=87?'saúde (art. 128)':'cultura ou comunicação (art. 128)'};
+  if (d===85 && +c.codigo.slice(0,3)<=855) return {r:60, why:'educação — só se for ensino regular (art. 128)', check:true};
+  return {r:0};
+}
+
+const cnaes = D.top_cnaes.map((c,i)=>({...c, rank:i+1, nome:c.descricao.replace(/\\.$/,''), red:reducao(c)}));
+const cities = D.top_municipios;
+
+document.getElementById('comp').textContent = 'Dados da Receita Federal, competência ' + D.competencia.split('-').reverse().join('/');
+document.getElementById('foot').textContent = \`Fonte: Radar da Reforma (indice.ia.br), base \${D.build_id}. \${fmt(D.total)} estabelecimentos ativos de serviços em SP (CNAE 49–96, exceto 84).\`;
+
+// city select
+const sel = document.getElementById('city');
+sel.innerHTML = '<option value="">Todo o estado de SP</option>' + cities.map(c=>\`<option value="\${c.codigo}">\${title(c.nome)}</option>\`).join('');
+
+// combobox
+const q = document.getElementById('q'), lst = document.getElementById('lst');
+let cur = cnaes.find(c=>c.codigo==='6911701') || cnaes[0], hi = -1, shown=[];
+const norm = s => s.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+function renderList(){
+  const t = norm(q.value.trim());
+  shown = cnaes.filter(c=>!t || norm(c.nome).includes(t) || c.codigo.startsWith(t)).slice(0,40);
+  lst.innerHTML = shown.length ? shown.map((c,i)=>\`<div class="opt" role="option" id="o\${i}" aria-selected="\${i===hi}" data-i="\${i}"><span>\${c.nome}</span><small>\${fmt(c.n)}</small></div>\`).join('')
+    : '<div class="opt"><span>Nenhum ramo encontrado. Tente outra palavra.</span></div>';
+  lst.classList.add('open'); q.setAttribute('aria-expanded','true');
+}
+function close(){lst.classList.remove('open');q.setAttribute('aria-expanded','false');hi=-1}
+function pick(c){cur=c;q.value=c.nome;close();renderVerdict();syncSim(true)}
+q.addEventListener('focus',()=>{q.select();renderList()});
+q.addEventListener('input',()=>{hi=-1;renderList()});
+q.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){hi=Math.min(hi+1,shown.length-1);renderList();e.preventDefault()}
+  else if(e.key==='ArrowUp'){hi=Math.max(hi-1,0);renderList();e.preventDefault()}
+  else if(e.key==='Enter'&&shown[hi>=0?hi:0]){pick(shown[hi>=0?hi:0]);e.preventDefault()}
+  else if(e.key==='Escape'){q.value=cur.nome;close()}
+});
+lst.addEventListener('mousedown',e=>{const o=e.target.closest('[data-i]');if(o){e.preventDefault();pick(shown[+o.dataset.i])}});
+q.addEventListener('blur',()=>setTimeout(()=>{if(lst.classList.contains('open')){q.value=cur.nome;close()}},120));
+sel.addEventListener('change',renderVerdict);
+
+function renderVerdict(){
+  const c = cur, red = c.red, city = cities.find(x=>x.codigo===sel.value);
+  const sPct = pct(c.simples,c.n), mPct = pct(c.mei,c.n);
+  let lead;
+  if (red.r===30) lead = \`Boa notícia: o seu ramo tem <b>redução de 30%</b> no novo imposto.\`;
+  else if (red.r===60 && !red.check) lead = \`Boa notícia: o seu ramo tem <b>redução de 60%</b> no novo imposto.\`;
+  else if (red.check) lead = \`Seu ramo <b>pode ter redução de 60%</b> — depende de ser ensino regular.\`;
+  else lead = \`Seu ramo <b>não tem redução</b> específica: paga a alíquota cheia do novo imposto.\`;
+  document.getElementById('lead').innerHTML = lead;
+  let peer = \`\${title(c.nome)} é o \${c.rank}º ramo de serviços com mais empresas em SP: \${fmt(c.n)} estabelecimentos.\`;
+  if (city) peer += \` Em \${title(city.nome)} há \${fmt(city.n)} empresas de serviços, \${pf(pct(city.simples,city.n))} delas no Simples.\`;
+  document.getElementById('peer').textContent = peer;
+
+  const A = [];
+  if (red.r) A.push({k:red.check?'warn':'good',i:red.check?'?':'✓',t: red.check?'Redução depende do tipo de ensino':\`Redução de \${red.r}% confirmada pelo CNAE\`,
+    d: red.r===30?'Vale para sociedades de profissionais regulamentados. Verifique se a sua empresa cumpre os requisitos societários.':red.check?'Cursos livres e treinamentos ficam fora. Ensino infantil, fundamental, médio e superior entram.':'Confirme com o contador se todos os serviços que você presta estão cobertos.'});
+  else A.push({k:'neutral',i:'–',t:'Sem redução específica',d:'O preço do serviço vai carregar a alíquota cheia. Vale revisar preço e margem antes da virada.'});
+  A.push(sPct>=50
+    ? {k:'warn',i:'!',t:\`\${pf(sPct)} do seu ramo está no Simples\`,d:\`Se você é um deles, precisa decidir se recolhe IBS/CBS dentro ou fora do DAS. \${mPct>=30?pf(mPct)+' do ramo é MEI.':''}\`}
+    : {k:'neutral',i:'i',t:\`Só \${pf(sPct)} do seu ramo está no Simples\`,d:'A maioria já está no regime normal e entra direto nas regras gerais de IBS e CBS.'});
+  A.push(red.r===0
+    ? {k:'risk',i:'!',t:'Confira se o seu CNAE está certo',d:\`\${fmt(D.flags.cnae_suspeito)} empresas em SP têm atividade principal sem benefício mas secundária com benefício. Se for o seu caso, a correção pode valer dinheiro.\`}
+    : {k:'good',i:'✓',t:'Mantenha o CNAE principal como está',d:'O benefício depende da atividade principal. Mudar o CNAE sem cuidado pode fazer você perder a redução.'});
+  document.getElementById('answers').innerHTML = A.map(a=>\`<div class="ans \${a.k}"><span class="dot" aria-hidden="true">\${a.i}</span><div><h3>\${a.t}</h3><p>\${a.d}</p></div></div>\`).join('');
+}
+
+// simulator
+let simR = 0;
+const segBtns = [...document.querySelectorAll('#redseg button')];
+function setR(r){simR=r;segBtns.forEach(b=>b.setAttribute('aria-pressed',+b.dataset.r===r));calc()}
+segBtns.forEach(b=>b.addEventListener('click',()=>setR(+b.dataset.r)));
+function syncSim(){
+  setR(cur.red.r);
+  document.getElementById('redhint').textContent = \`Pré-selecionado pelo seu ramo: \${cur.red.r?cur.red.r+'% — '+cur.red.why:'sem redução'}.\`;
+}
+function calc(){
+  const f = Math.max(0,+document.getElementById('fat').value||0), r = Math.max(0,+document.getElementById('rate').value||0)/100;
+  const full = f*r, red = full*(1-simR/100);
+  document.getElementById('v0').textContent = brl(full)+'/mês';
+  document.getElementById('v1').textContent = brl(red)+'/mês';
+  document.getElementById('v2').textContent = brl((full-red)*12);
+  document.getElementById('b0').style.width = full?'100%':'0';
+  document.getElementById('b1').style.width = full?(red/full*100)+'%':'0';
+}
+['fat','rate'].forEach(id=>document.getElementById(id).addEventListener('input',calc));
+
+// panorama
+const F = D.flags, T = D.total;
+document.getElementById('pano-sub').textContent = \`\${fmt(T)} estabelecimentos de serviços ativos no estado. Uma mesma empresa pode aparecer em mais de um grupo.\`;
+const pano = [
+  {n:F.decisao_simples,c:'c-warn',t:'precisam decidir sobre o Simples',d:'Optantes do Simples escolhem como recolher o novo imposto.'},
+  {n:F.elegivel_128,c:'c-good',t:'têm redução de 60%',d:'Saúde, educação regular, cultura e jornalismo.'},
+  {n:F.elegivel_127,c:'c-good',t:'têm redução de 30%',d:'As 18 profissões regulamentadas: advocacia, contabilidade, engenharia…'},
+  {n:F.cnae_suspeito,c:'c-risk',t:'devem revisar o CNAE',d:'Atividade principal sem benefício, mas secundária com benefício.'},
+];
+document.getElementById('pano').innerHTML = pano.map(p=>\`<div><div class="num \${p.c}">\${fmt(p.n)}</div><div class="pct">\${pf(pct(p.n,T),1)} \${p.t}</div><p class="d">\${p.d}</p></div>\`).join('');
+
+// porte
+const portes = [['01','Microempresa (ME)'],['03','Pequeno porte (EPP)'],['05','Médias e grandes']];
+document.getElementById('porte').innerHTML = portes.map(([k,lab])=>{
+  const p = D.por_porte[k]; if(!p) return '';
+  const mei = pct(p.mei,p.n), simp = pct(p.simples-p.mei,p.n);
+  return \`<div class="prow" style="margin-top:14px"><div><strong>\${lab}</strong><div class="muted" style="font-size:.88rem">\${fmt(p.n)} empresas</div></div>
+  <div class="stack" role="img" aria-label="\${lab}: \${pf(mei)} MEI, \${pf(simp)} Simples sem MEI"><span style="width:\${mei}%;background:var(--warn)"></span><span style="width:\${simp}%;background:color-mix(in srgb,var(--warn) 45%,var(--paper))"></span></div>
+  <div class="n" style="text-align:right"><strong>\${pf(pct(p.simples,p.n))}</strong><div class="muted" style="font-size:.82rem">no Simples</div></div></div>\`;
+}).join('');
+
+// tables
+const benef = cnaes.filter(c=>c.red.r>0).sort((a,b)=>b.n-a.n).slice(0,12);
+document.querySelector('#t-benef tbody').innerHTML = benef.map(c=>\`<tr class="clickable" tabindex="0" data-c="\${c.codigo}"><td>\${c.nome}</td><td><span class="chip \${c.red.check?'w':'g'}">\${c.red.r}%\${c.red.check?' *':''}</span></td><td class="n">\${fmt(c.n)}</td></tr>\`).join('');
+document.querySelectorAll('#t-benef tr.clickable').forEach(tr=>{
+  const go=()=>{pick(cnaes.find(c=>c.codigo===tr.dataset.c));document.querySelector('.picker').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})};
+  tr.addEventListener('click',go);tr.addEventListener('keydown',e=>{if(e.key==='Enter')go()});
+});
+const cityRank = [...cities].sort((a,b)=>b.eleg127-a.eleg127).slice(0,12);
+document.querySelector('#t-city tbody').innerHTML = cityRank.map(c=>\`<tr><td>\${title(c.nome)}</td><td class="n">\${fmt(c.eleg127)}</td><td class="n">\${pf(pct(c.eleg127,c.n),1)}</td></tr>\`).join('');
+
+q.value = cur.nome; renderVerdict(); syncSim();
+</script>
+
+<script>
+(function(){
+  try{
+    const c = localStorage.getItem("agg_cache");
+    if (c) window.__AGG__ = JSON.parse(c);
+  }catch(e){}
+})();
+fetch("/api/radar/analise").then(r => r.ok ? r.json() : null).then(novo => {
+  if (!novo || !novo.total) return;
+  try{ localStorage.setItem("agg_cache", JSON.stringify(novo)); }catch(e){}
+  if (typeof D !== "undefined" && novo.build_id !== D.build_id && !sessionStorage.getItem("agg_rf")){
+    sessionStorage.setItem("agg_rf", "1");
+    location.reload();
+  }
+}).catch(() => {});
+</script>
+</body>
+</html>
+`;
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -1270,6 +1706,12 @@ export default {
 
     if (p === "/pro" && req.method === "GET") {
       return new Response(PRO_HTML, { headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-cache, must-revalidate",
+      } });
+    }
+    if (p === "/dash" && req.method === "GET") {
+      return new Response(DASH_HTML, { headers: {
         "content-type": "text/html; charset=utf-8",
         "cache-control": "no-cache, must-revalidate",
       } });

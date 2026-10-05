@@ -70,7 +70,7 @@ export function avaliar(e: Estabelecimento | null, eventos: string[], competenci
   if (e.simples === "S") {
     flags.push("decisao_simples");
     score += p.decisao_simples;
-    frases.push("Optante do Simples com CNAE de servico: decidir recolhimento de CBS/IBS dentro ou fora do DAS ate set/2026, valendo de 01/01/2027.");
+    frases.push("Optante do Simples com CNAE de servico: ate 30/10/2026, optar no Portal do Simples pelo recolhimento de CBS/IBS dentro ou fora do DAS (Resolucao CGSN 194/2026), valendo jan-jun/2027; desistencia de 03/11 a 20/12/2026.");
   }
 
   const secundarios = (e.cnaes_secundarios ?? "").split(",").map((s) => s.trim()).filter(Boolean);

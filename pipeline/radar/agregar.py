@@ -40,7 +40,7 @@ def main() -> None:
             return -1
 
     def novo():
-        return {"n": 0, "simples": 0, "mei": 0, "eleg127": 0}
+        return {"n": 0, "simples": 0, "mei": 0, "eleg127": 0, "eleg128": 0}
 
     por_cnae: dict[str, dict] = {}
     por_divisao: dict[str, dict] = {}
@@ -49,12 +49,13 @@ def main() -> None:
     flags = {"elegivel_127": 0, "elegivel_128": 0, "decisao_simples": 0, "cnae_suspeito": 0}
     total = 0
 
-    def conta(mapa, chave, simples, mei, eleg):
+    def conta(mapa, chave, simples, mei, eleg, eleg128):
         d = mapa.setdefault(chave, novo())
         d["n"] += 1
         d["simples"] += simples
         d["mei"] += mei
         d["eleg127"] += eleg
+        d["eleg128"] += eleg128
 
     for i, key in enumerate(manifest["chunks"], 1):
         corpo = s3.get_object(Bucket=env["R2_BUCKET"], Key=key)["Body"].read().decode()
@@ -69,18 +70,20 @@ def main() -> None:
             mei = 1 if r.get("mei") == "S" else 0
             eleg = 1 if cnae in art127 else 0
             dv = divisao(cnae)
+            e128 = 0
             if eleg:
                 flags["elegivel_127"] += 1
             elif dv in saude_div or cnae in educ_cnaes or dv in cult_div:
                 flags["elegivel_128"] += 1
+                e128 = 1
             if sim:
                 flags["decisao_simples"] += 1
             if not eleg and any(s.strip() in art127 for s in sec.split(",") if s.strip()):
                 flags["cnae_suspeito"] += 1
-            conta(por_cnae, cnae, sim, mei, eleg)
-            conta(por_divisao, cnae[:2] or "??", sim, mei, eleg)
-            conta(por_municipio, r.get("municipio_codigo") or "?", sim, mei, eleg)
-            conta(por_porte, r.get("porte") or "?", sim, mei, eleg)
+            conta(por_cnae, cnae, sim, mei, eleg, e128)
+            conta(por_divisao, cnae[:2] or "??", sim, mei, eleg, e128)
+            conta(por_municipio, r.get("municipio_codigo") or "?", sim, mei, eleg, e128)
+            conta(por_porte, r.get("porte") or "?", sim, mei, eleg, e128)
         if i % 50 == 0:
             print(f".. {i}/{len(manifest['chunks'])} chunks, {total} linhas",
                   file=sys.stderr, flush=True)
