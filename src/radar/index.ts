@@ -367,6 +367,42 @@ async function status(env: Env): Promise<Response> {
   return json({ build_ativo: build, contagens });
 }
 
+/* ---------- consulta instantanea de um CNPJ ---------- */
+
+async function consultaCnpj(env: Env, cnpjRaw: string): Promise<Response> {
+  const cnpj = normalizarCnpj(cnpjRaw);
+  if (!cnpj) return json({ erro: "formato de CNPJ invalido" }, 400);
+  if (!dvValido(cnpj)) return json({ erro: "digito verificador invalido" }, 422);
+
+  const build = await buildAtivo(env) as { build_id: string; competencia: string } | null;
+  const competencia = build?.competencia ?? "ao-vivo";
+  let estab: Estabelecimento | null = null;
+  let fonte = "nao_encontrado";
+
+  if (build) {
+    const [qC, qR] = await env.RADAR_DB.batch([
+      env.RADAR_DB.prepare(`SELECT * FROM radar_estabelecimentos WHERE build_id = ? AND cnpj = ?`)
+        .bind(build.build_id, cnpj),
+      env.RADAR_DB.prepare(`SELECT * FROM radar_estabelecimentos WHERE build_id = ? AND cnpj_raiz = ? LIMIT 1`)
+        .bind(build.build_id, cnpj.slice(0, 8)),
+    ]);
+    estab = ((qC.results?.[0] ?? qR.results?.[0]) ?? null) as Estabelecimento | null;
+    if (estab) fonte = "recorte_rfb";
+  }
+  if (!estab) {
+    estab = await buscarBrasilApi(cnpj);
+    if (estab) fonte = "brasilapi_ao_vivo";
+  }
+
+  const a = avaliar(estab, [], competencia);
+  a.detalhes.evidencias.fonte = fonte;
+  return json({
+    cnpj: formatarCnpj(cnpj), encontrado: !!estab, score: a.score,
+    flags: a.flags, frase_trabalho: a.detalhes.frase_trabalho,
+    evidencias: a.detalhes.evidencias,
+  });
+}
+
 /* ---------- analise agregada + exploracao da base ---------- */
 
 let aggCache: { build: string; dados: unknown; ts: number } | null = null;
@@ -905,7 +941,7 @@ const APP_HTML = `<!doctype html>
 <div class="wrap">
   <div class="hero">
     <h1>Otimizador de CNAEs</h1>
-    <p>Reforma tributária, sem juridiquês.<br>Arraste a carteira e veja quanto dinheiro tem na mesa.</p>
+    <p>Comece por um CNPJ — ou arraste a carteira inteira.<br>A resposta em segundos, sem juridiquês.</p>
   </div>
 
   <div id="app">
@@ -972,11 +1008,30 @@ const ACAO = {
 
 async function api(path, opts){ return fetch(path, opts || {}); }
 async function iniciar(){ await api("/api/radar/status"); }
+function soUmCnpj(txt){
+  const limpo = txt.replace(/[^0-9A-Za-z]/g, "");
+  return limpo.length === 14 ? limpo : null;
+}
+async function analisarUm(cnpj){
+  msg("Consultando…");
+  const r = await api("/api/radar/cnpj/" + encodeURIComponent(cnpj));
+  const d = await r.json();
+  if (!r.ok){ msg(d.erro || "Erro na consulta"); return; }
+  // reusa a renderizacao de lista com um unico item
+  ITENS = [{cnpj: d.cnpj, encontrado: d.encontrado, score: d.score,
+            flags: d.flags, frase_trabalho: d.frase_trabalho, evidencias: d.evidencias}];
+  CARTEIRA = "";
+  render(); calc();
+  $("resultado").style.display = "block";
+  msg("");
+}
 async function analisar(){
   const txt = $("cnpjs").value.trim();
   if (!txt){ msg("Cole os CNPJs ou arraste a planilha 🙂"); return; }
   $("btn-go").disabled = true;
   try{
+    const um = soUmCnpj(txt);
+    if (um){ await analisarUm(um); $("btn-go").disabled = false; return; }
     msg("Lendo a carteira…");
     let r = await api("/api/radar/carteiras", {method: "POST", headers: {"content-type": "text/csv"}, body: txt});
     let d = await r.json();
@@ -1100,6 +1155,8 @@ export default {
     if (p === "/api/radar/painel" && req.method === "GET") return painelJson(env);
     if (p === "/api/radar/analise" && req.method === "GET") return analiseJson(env);
     if (p === "/api/radar/explorar" && req.method === "GET") return explorar(env, url);
+    const mCnpj = p.match(/^\/api\/radar\/cnpj\/([0-9A-Za-z./-]+)$/);
+    if (mCnpj && req.method === "GET") return consultaCnpj(env, mCnpj[1]);
     if (p === "/api/radar/carteiras" && req.method === "POST") return novaCarteira(env, req);
     let m = p.match(/^\/api\/radar\/carteiras\/([a-f0-9]{24})\/cruzar$/);
     if (m && req.method === "POST") return cruzar(env, m[1]);
