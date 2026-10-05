@@ -1,7 +1,7 @@
 {
-  "regras_version": "2026-10-05.fundamentada",
+  "regras_version": "2026-10-05.fundamentada-v2",
   "status": "fundamentada_parcial",
-  "observacao": "Art. 127 LC 214/2025: rol TAXATIVO de 18 profissoes (reducao 30%). Saude (medicina, odonto, psicologia, fisio, enfermagem, nutricao, fono, terapia ocupacional) NAO esta no 127: tem reducao de 60% pelo art. 128, II + Anexo III. Mapeamento CNAE: profissoes com CNAE exclusivo mapeadas; administradores, economistas, estatisticos, agronomos e tecnicos (industriais/agricolas) nao tem CNAE exclusivo — ficam fora da deteccao automatica. Divisoes 86 e 87 (saude humana) como aproximacao do Anexo III. Validar com contador antes de decisao de cliente.",
+  "observacao": "Art. 127 LC 214/2025: rol TAXATIVO de 18 profissoes (reducao 30%). Saude (medicina, odonto, psicologia, fisio, enfermagem, nutricao, fono, terapia ocupacional) tem reducao MAIOR: 60% pelo art. 128, II + Anexo III (divisoes 86 e 87 como aproximacao). Cobertura: CNAEs exclusivos marcados sem tag; 'parcial' = CNAE que mistura a profissao com outras atividades (revisar caso a caso). SEM mapeamento seguro (falso positivo certo): administradores, economistas, economistas domesticos e relacoes publicas — 7020-4/00 e 7319-0/04 sao amplos demais; deteccao manual pelo contador. Na PJ, o beneficio exige requisitos societarios (socios habilitados na profissao, sem PJ no quadro societario). Validar com contador.",
   "fontes": [
     "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214.htm (arts. 127 e 128, II)"
   ],
@@ -15,11 +15,21 @@
   },
   "cnaes_art127": {
     "6911701": "Servicos advocaticios (advogados, OAB)",
+    "6911702": "Atividades auxiliares da justica (pericia judicial, mediacao/arbitragem — parcial)",
     "6920601": "Atividades de contabilidade (contabilistas, CRC)",
+    "6920602": "Consultoria e auditoria contabil e tributaria (contabilistas, CRC)",
     "7111100": "Servicos de arquitetura (arquitetos e urbanistas, CAU)",
     "7112000": "Servicos de engenharia (engenheiros, CREA)",
-    "7500100": "Atividades veterinarias (medicos veterinarios e zootecnistas, CRMV)",
+    "7119701": "Cartografia, topografia e geodesia (engenheiros/tecnicos — parcial)",
+    "7119702": "Estudos geologicos (engenheiros/tecnicos — parcial)",
+    "7119703": "Desenho tecnico relacionado a arquitetura e engenharia (tecnicos — parcial)",
+    "7119704": "Pericia tecnica de seguranca do trabalho (engenheiros/tecnicos — parcial)",
+    "7119799": "Outras atividades tecnicas relacionadas a engenharia e arquitetura (parcial)",
     "7120100": "Ensaios e analises tecnicas (quimicos, CRQ — parcial)",
+    "7210000": "Pesquisa e desenvolvimento em ciencias fisicas e naturais (biologos — parcial)",
+    "7320300": "Pesquisas de mercado e de opiniao publica (estatisticos — parcial)",
+    "7490103": "Servicos de agronomia e consultoria agricola e pecuaria (agronomos e tecnicos agricolas, CFA)",
+    "7500100": "Atividades veterinarias (medicos veterinarios e zootecnistas, CRMV)",
     "8800900": "Servicos sociais sem alojamento (assistentes sociais — parcial)",
     "9101100": "Bibliotecas e arquivos (bibliotecarios)",
     "9102300": "Museus e exploracao de espacos artisticos (museologos)",
