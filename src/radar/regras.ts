@@ -1,25 +1,26 @@
 /** MANTER EM SYNC com pipeline/radar/regras_tributarias.json.
- * Lista semente RASCUNHO (validar com contador): CNAEs ligados a
- * profissoes regulamentadas (art. 127 da LC 214/2025, alt. LC 227/2026).
+ * FUNDAMENTADA: art. 127 (rol taxativo, 30%) x art. 128, II (saude, 60%).
+ * Profissoes sem CNAE exclusivo (adm, economistas, estatisticos, agronomos,
+ * tecnicos) ficam fora da deteccao automatica — nota para o contador.
  */
 export const REGRAS = {
-  regrasVersion: "2026-10-04.rascunho",
+  regrasVersion: "2026-10-05.fundamentada",
   cnaesArt127: {
-    "6911701": "Servicos advocaticios (OAB)",
-    "6920601": "Atividades de contabilidade (CRC)",
-    "7111100": "Servicos de arquitetura (CAU)",
-    "7112000": "Servicos de engenharia (CREA)",
-    "7500100": "Atividades veterinarias (CRMV)",
-    "8610101": "Atividades de atendimento hospitalar (verificar anexo)",
-    "8630501": "Atividade medica ambulatorial c/ procedimentos cirurgicos (CRM)",
-    "8630502": "Atividade medica ambulatorial c/ exames complementares (CRM)",
-    "8630503": "Atividade medica ambulatorial restrita a consultas (CRM)",
-    "8630504": "Atividade odontologica (CRO)",
-    "8630506": "Servicos de vacinacao e imunizacao humana",
-    "8630507": "Atividades de reproducao humana assistida",
+    "6911701": "Servicos advocaticios (advogados, OAB)",
+    "6920601": "Atividades de contabilidade (contabilistas, CRC)",
+    "7111100": "Servicos de arquitetura (arquitetos e urbanistas, CAU)",
+    "7112000": "Servicos de engenharia (engenheiros, CREA)",
+    "7500100": "Atividades veterinarias (medicos veterinarios e zootecnistas, CRMV)",
+    "7120100": "Ensaios e analises tecnicas (quimicos, CRQ — parcial)",
+    "8800900": "Servicos sociais sem alojamento (assistentes sociais — parcial)",
+    "9101100": "Bibliotecas e arquivos (bibliotecarios)",
+    "9102300": "Museus e exploracao de espacos artisticos (museologos)",
+    "9313100": "Atividades de condicionamento fisico (profissionais de educacao fisica — parcial)",
   } as Record<string, string>,
+  divisoesArt128Saude: [86, 87],
   pesos: {
     elegivel_127: 40,
+    elegivel_128: 45,
     decisao_simples: 30,
     cnae_suspeito: 20,
     cnae_mudou: 15,

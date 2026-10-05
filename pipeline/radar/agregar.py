@@ -24,10 +24,17 @@ def main() -> None:
         raise SystemExit("uso: agregar.py <build_id>")
     regras = json.loads(Path(__file__).with_name("regras_tributarias.json").read_text())
     art127 = set(regras["cnaes_art127"])
+    saude128 = set(regras.get("divisoes_art128_saude", [86, 87]))
 
     manifest = json.loads(s3.get_object(
         Bucket=env["R2_BUCKET"],
         Key=f"radar/builds/{build_id}/manifest.json")["Body"].read())
+
+    def divisao(cnae):
+        try:
+            return int((cnae or "")[:2])
+        except ValueError:
+            return -1
 
     def novo():
         return {"n": 0, "simples": 0, "mei": 0, "eleg127": 0}
@@ -36,7 +43,7 @@ def main() -> None:
     por_divisao: dict[str, dict] = {}
     por_municipio: dict[str, dict] = {}
     por_porte: dict[str, dict] = {}
-    flags = {"elegivel_127": 0, "decisao_simples": 0, "cnae_suspeito": 0}
+    flags = {"elegivel_127": 0, "elegivel_128": 0, "decisao_simples": 0, "cnae_suspeito": 0}
     total = 0
 
     def conta(mapa, chave, simples, mei, eleg):
@@ -60,6 +67,8 @@ def main() -> None:
             eleg = 1 if cnae in art127 else 0
             if eleg:
                 flags["elegivel_127"] += 1
+            elif divisao(cnae) in saude128:
+                flags["elegivel_128"] += 1
             if sim:
                 flags["decisao_simples"] += 1
             if not eleg and any(s.strip() in art127 for s in sec.split(",") if s.strip()):

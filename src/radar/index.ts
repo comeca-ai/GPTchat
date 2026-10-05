@@ -569,6 +569,7 @@ const PRO_HTML = `<!doctype html>
   th{color:#7a8ca0;font-weight:600;font-size:11px;position:sticky;top:0;background:#131a22}
   .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;margin:1px 2px}
   .b-elegivel_127{background:#14462e;color:#7ee0a3}
+  .b-elegivel_128{background:#123a4a;color:#6fc3ff}
   .b-decisao_simples{background:#4a3a12;color:#ffd479}
   .b-cnae_suspeito{background:#4a2a12;color:#ffab70}
   .b-cnae_mudou{background:#123a4a;color:#6fc3ff}
@@ -621,6 +622,7 @@ const PRO_HTML = `<!doctype html>
       <select id="f-flag" onchange="render()">
         <option value="">todas as flags</option>
         <option value="elegivel_127">elegível 30% (art. 127)</option>
+        <option value="elegivel_128">saúde 60% (art. 128)</option>
         <option value="decisao_simples">decisão Simples</option>
         <option value="cnae_suspeito">CNAE suspeito</option>
         <option value="cnae_mudou">CNAE mudou</option>
@@ -961,6 +963,8 @@ const $ = id => document.getElementById(id);
 const fmt = n => n == null ? "—" : Number(n).toLocaleString("pt-BR");
 
 const ACAO = {
+  elegivel_128: {pill: ["p-verde", "Saúde: 60% menos"], titulo: "Saúde: redução de 60% (art. 128)",
+    como: "Esta empresa é de saúde. Serviços de saúde têm redução de 60% do IBS/CBS — benefício maior que o das outras profissões. Revise o enquadramento no Anexo III com o contador."},
   elegivel_127: {pill: ["p-verde", "Pode pagar 30% menos"], titulo: "Redução de alíquota (art. 127)",
     como: "Esta empresa tem CNAE de profissão regulamentada. Revise o enquadramento: se confirmado, ela entra na faixa de redução de 30% do IBS/CBS."},
   decisao_simples: {pill: ["p-amarela", "Decisão até set/2026"], titulo: "Simples: dentro ou fora",
@@ -1035,10 +1039,10 @@ function render(){
     const ev = it.evidencias || {};
     const flags = it.encontrado ? (it.flags || []) : [];
     const pills = it.encontrado
-      ? (flags.length ? flags.map(f => '<span class="pill ' + ACAO[f][0] + '">' + ACAO[f][1] + "</span>").join("")
+      ? (flags.length ? flags.filter(f => ACAO[f]).map(f => '<span class="pill ' + ACAO[f][0] + '">' + ACAO[f][1] + "</span>").join("")
                        : '<span class="pill p-cinza">Sem ação necessária</span>')
       : '<span class="pill p-cinza">Não encontrada na base</span>';
-    const acoes = flags.map(f => '<div class="acao"><b>' + ACAO[f].titulo + ".</b> " + ACAO[f].como + "</div>").join("");
+    const acoes = flags.filter(f => ACAO[f]).map(f => '<div class="acao"><b>' + ACAO[f].titulo + ".</b> " + ACAO[f].como + "</div>").join("");
     return '<div class="emp"><div class="info">'
       + '<div class="nome">' + (ev.razao_social || it.cnpj) + "</div>"
       + '<div class="meta">' + it.cnpj + " · CNAE " + (ev.cnae_principal || "—")

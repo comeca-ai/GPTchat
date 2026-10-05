@@ -25,6 +25,11 @@ export interface Avaliacao {
   };
 }
 
+function divisaoCnae(cnae: string): number {
+  const d = parseInt((cnae ?? "").slice(0, 2), 10);
+  return Number.isNaN(d) ? -1 : d;
+}
+
 export function avaliar(e: Estabelecimento | null, eventos: string[], competencia: string): Avaliacao {
   if (!e) {
     return {
@@ -48,7 +53,11 @@ export function avaliar(e: Estabelecimento | null, eventos: string[], competenci
   if (desc127) {
     flags.push("elegivel_127");
     score += p.elegivel_127;
-    frases.push(`CNAE principal ligado a profissao regulamentada (${desc127}); verificar reducao de 30% (art. 127, LC 214/2025) — lista rascunho, validar com contador.`);
+    frases.push(`Profissao do rol do art. 127 (${desc127}): verificar reducao de 30% do IBS/CBS; na PJ, exige requisitos societarios (socios habilitados, sem PJ no quadro).`);
+  } else if (REGRAS.divisoesArt128Saude.includes(divisaoCnae(e.cnae_principal))) {
+    flags.push("elegivel_128");
+    score += p.elegivel_128;
+    frases.push("Servico de saude (art. 128, II): verificar reducao de 60% do IBS/CBS conforme Anexo III; saude NAO entra no art. 127 — o beneficio e maior.");
   }
 
   if (e.simples === "S") {
@@ -59,10 +68,12 @@ export function avaliar(e: Estabelecimento | null, eventos: string[], competenci
 
   const secundarios = (e.cnaes_secundarios ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const sec127 = secundarios.filter((s) => REGRAS.cnaesArt127[s]);
-  if (!desc127 && sec127.length > 0) {
+  const sec128 = secundarios.filter((s) => REGRAS.divisoesArt128Saude.includes(divisaoCnae(s)));
+  if (!desc127 && !flags.includes("elegivel_128") && (sec127.length > 0 || sec128.length > 0)) {
     flags.push("cnae_suspeito");
     score += p.cnae_suspeito;
-    frases.push(`Atividade principal declarada pode nao refletir a atividade economica: CNAE secundario ${sec127[0]} sugere profissao regulamentada; revisar enquadramento.`);
+    const alvo = sec127[0] ?? sec128[0];
+    frases.push(`Atividade principal pode nao refletir a atividade economica: CNAE secundario ${alvo} sugere atividade com beneficio fiscal; revisar enquadramento.`);
   }
 
   if (eventos.includes("cnae_changed")) {
@@ -72,7 +83,10 @@ export function avaliar(e: Estabelecimento | null, eventos: string[], competenci
   }
 
   if (frases.length === 0) {
-    frases.push("Nenhuma flag tributaria no recorte atual; manter monitoramento.");
+    const motivoSimples = e.simples === "S" ? "" : "nao consta como optante do Simples; ";
+    frases.push(
+      `Sem acao identificada: CNAE ${e.cnae_principal} fora do rol do art. 127 e da saude (art. 128); ${motivoSimples}manter monitoramento — novas reducoes e atos do Comite Gestor sao reavaliados a cada competencia.`
+    );
   }
 
   return {
