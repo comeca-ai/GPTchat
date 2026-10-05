@@ -1224,13 +1224,22 @@ export default {
     const p = url.pathname;
 
     if (p === "/pro" && req.method === "GET") {
-      return new Response(PRO_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
+      return new Response(PRO_HTML, { headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-cache, must-revalidate",
+      } });
     }
     if (p === "/app" && req.method === "GET") {
-      return new Response(APP_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
+      return new Response(APP_HTML, { headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-cache, must-revalidate",
+      } });
     }
     if (p === "/radar" && req.method === "GET") {
-      return new Response(MONITOR_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
+      return new Response(MONITOR_HTML, { headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-cache, must-revalidate",
+      } });
     }
     if (p === "/internal/radar/load" && req.method === "POST") {
       if (!autorizado(req, env, "internal")) return json({ erro: "nao autorizado" }, 401);
