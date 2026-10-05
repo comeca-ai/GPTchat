@@ -1209,9 +1209,9 @@ function calcEco(){
 function copiarDelegacao(btn){
   const d = DADO, ev = (d && d.evidencias) || {};
   const pontos = (d.regras || []).filter(r => r.status !== "nao_se_aplica")
-    .map(r => "- " + r.nome + ": " + r.detalhe).join("\n");
-  const txt = "Analisei o CNPJ " + d.cnpj + " (" + (ev.razao_social || "") + ") na reforma tributária (LC 214/2025) e preciso que você verifique com urgência:\n\n" + pontos
-    + "\n\nMe retorne com o parecer e o plano de ação até o fim desta semana, por favor.";
+    .map(r => "- " + r.nome + ": " + r.detalhe).join("\\n");
+  const txt = "Analisei o CNPJ " + d.cnpj + " (" + (ev.razao_social || "") + ") na reforma tributária (LC 214/2025) e preciso que você verifique com urgência:\\n\\n" + pontos
+    + "\\n\\nMe retorne com o parecer e o plano de ação até o fim desta semana, por favor.";
   navigator.clipboard.writeText(txt).then(() => { btn.textContent = "✅ Copiada!"; setTimeout(() => btn.textContent = "📋 Copiar mensagem de cobrança", 1800); });
 }
 iniciar();
