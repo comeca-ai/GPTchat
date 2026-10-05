@@ -12,7 +12,7 @@
     "db:seed": "wrangler d1 execute cnpj-chat-db --local --file=seed.sql",
     "check": "tsc --noEmit",
     "test": "node --experimental-strip-types --test test/*.test.ts",
-    "test:telas": "node test/agente-telas.js"
+    "test:telas": "node test/agente-telas.cjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261002.1",
