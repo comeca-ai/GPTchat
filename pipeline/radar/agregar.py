@@ -24,7 +24,10 @@ def main() -> None:
         raise SystemExit("uso: agregar.py <build_id>")
     regras = json.loads(Path(__file__).with_name("regras_tributarias.json").read_text())
     art127 = set(regras["cnaes_art127"])
-    saude128 = set(regras.get("divisoes_art128_saude", [86, 87]))
+    g128 = regras.get("grupos_art128", {})
+    saude_div = set(g128.get("saude", {}).get("divisoes", [86, 87]))
+    educ_cnaes = set(g128.get("educacao", {}).get("cnaes", []))
+    cult_div = set(g128.get("cultura", {}).get("divisoes", []))
 
     manifest = json.loads(s3.get_object(
         Bucket=env["R2_BUCKET"],
@@ -65,9 +68,10 @@ def main() -> None:
             sim = 1 if r.get("simples") == "S" else 0
             mei = 1 if r.get("mei") == "S" else 0
             eleg = 1 if cnae in art127 else 0
+            dv = divisao(cnae)
             if eleg:
                 flags["elegivel_127"] += 1
-            elif divisao(cnae) in saude128:
+            elif dv in saude_div or cnae in educ_cnaes or dv in cult_div:
                 flags["elegivel_128"] += 1
             if sim:
                 flags["decisao_simples"] += 1

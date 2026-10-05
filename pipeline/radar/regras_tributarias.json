@@ -1,7 +1,7 @@
 {
-  "regras_version": "2026-10-05.fundamentada-v2",
+  "regras_version": "2026-10-05.fundamentada-v3",
   "status": "fundamentada_parcial",
-  "observacao": "Art. 127 LC 214/2025: rol TAXATIVO de 18 profissoes (reducao 30%). Saude (medicina, odonto, psicologia, fisio, enfermagem, nutricao, fono, terapia ocupacional) tem reducao MAIOR: 60% pelo art. 128, II + Anexo III (divisoes 86 e 87 como aproximacao). Cobertura: CNAEs exclusivos marcados sem tag; 'parcial' = CNAE que mistura a profissao com outras atividades (revisar caso a caso). SEM mapeamento seguro (falso positivo certo): administradores, economistas, economistas domesticos e relacoes publicas — 7020-4/00 e 7319-0/04 sao amplos demais; deteccao manual pelo contador. Na PJ, o beneficio exige requisitos societarios (socios habilitados na profissao, sem PJ no quadro societario). Validar com contador.",
+  "observacao": "v3: art.127 rol taxativo 18 profissoes (30%); art.128 em grupos: saude 86-87 (60%), educacao somente os 8 CNAEs de ensino do Anexo II (apoio/caixas escolares e cursos livres FORA), cultura/jornalismo/audiovisual divisoes 58-60 e 90-92 (60%, parcial). Prevalece a maior reducao (art. 126, paragrafo unico).",
   "fontes": [
     "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214.htm (arts. 127 e 128, II)"
   ],
@@ -35,15 +35,44 @@
     "9102300": "Museus e exploracao de espacos artisticos (museologos)",
     "9313100": "Atividades de condicionamento fisico (profissionais de educacao fisica — parcial)"
   },
-  "divisoes_art128_saude": [
-    86,
-    87
-  ],
   "pesos": {
     "elegivel_127": 40,
     "elegivel_128": 45,
     "decisao_simples": 30,
     "cnae_suspeito": 20,
     "cnae_mudou": 15
+  },
+  "grupos_art128": {
+    "saude": {
+      "divisoes": [
+        86,
+        87
+      ],
+      "rotulo": "Servico de saude (art. 130 + Anexo III): reducao de 60% do IBS/CBS"
+    },
+    "educacao": {
+      "cnaes": [
+        "8511200",
+        "8512100",
+        "8513300",
+        "8520100",
+        "8531700",
+        "8532500",
+        "8541400",
+        "8542200"
+      ],
+      "rotulo": "Servico de educacao do Anexo II (art. 129: ensino infantil a superior, EJA, tecnico, especial): reducao de 60%. ATENCAO: cursos livres, idiomas comuns e atividades de apoio (ex.: caixas escolares 8550-3/01) ficam FORA — so contraprestacao do servico listado"
+    },
+    "cultura": {
+      "divisoes": [
+        58,
+        59,
+        60,
+        90,
+        91,
+        92
+      ],
+      "rotulo": "Producao nacional artistica, cultural, de eventos, jornalistica ou audiovisual (art. 128, X): reducao de 60% — PARCIAL, verificar enquadramento especifico da producao"
+    }
   }
 }

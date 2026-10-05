@@ -963,8 +963,8 @@ const $ = id => document.getElementById(id);
 const fmt = n => n == null ? "—" : Number(n).toLocaleString("pt-BR");
 
 const ACAO = {
-  elegivel_128: {pill: ["p-verde", "Saúde: 60% menos"], titulo: "Saúde: redução de 60% (art. 128)",
-    como: "Esta empresa é de saúde. Serviços de saúde têm redução de 60% do IBS/CBS — benefício maior que o das outras profissões. Revise o enquadramento no Anexo III com o contador."},
+  elegivel_128: {pill: ["p-verde", "Até 60% menos imposto"], titulo: "Benefício de 60% (art. 128)",
+    como: "Esta empresa está num setor com redução de 60% do IBS/CBS (saúde, educação regular ou produção cultural/jornalística). O detalhe exato está na frase de trabalho; revise o enquadramento no anexo correspondente com o contador."},
   elegivel_127: {pill: ["p-verde", "Pode pagar 30% menos"], titulo: "Redução de alíquota (art. 127)",
     como: "Esta empresa tem CNAE de profissão regulamentada. Revise o enquadramento: se confirmado, ela entra na faixa de redução de 30% do IBS/CBS."},
   decisao_simples: {pill: ["p-amarela", "Decisão até set/2026"], titulo: "Simples: dentro ou fora",

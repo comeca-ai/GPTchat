@@ -50,14 +50,21 @@ export function avaliar(e: Estabelecimento | null, eventos: string[], competenci
   const p = REGRAS.pesos;
 
   const desc127 = REGRAS.cnaesArt127[e.cnae_principal];
+  const g = REGRAS.gruposArt128;
+  const div = divisaoCnae(e.cnae_principal);
+  let grupo128: string | null = null;
+  if (g.saude.divisoes.includes(div)) grupo128 = g.saude.rotulo;
+  else if (g.educacao.cnaes.includes(e.cnae_principal)) grupo128 = g.educacao.rotulo;
+  else if (g.cultura.divisoes.includes(div)) grupo128 = g.cultura.rotulo;
+
   if (desc127) {
     flags.push("elegivel_127");
     score += p.elegivel_127;
     frases.push(`Profissao do rol do art. 127 (${desc127}): verificar reducao de 30% do IBS/CBS; na PJ, exige requisitos societarios (socios habilitados, sem PJ no quadro).`);
-  } else if (REGRAS.divisoesArt128Saude.includes(divisaoCnae(e.cnae_principal))) {
+  } else if (grupo128) {
     flags.push("elegivel_128");
     score += p.elegivel_128;
-    frases.push("Servico de saude (art. 128, II): verificar reducao de 60% do IBS/CBS conforme Anexo III; saude NAO entra no art. 127 — o beneficio e maior.");
+    frases.push(`${grupo128}. Prevalece a maior reducao quando houver mais de uma.`);
   }
 
   if (e.simples === "S") {
@@ -68,7 +75,10 @@ export function avaliar(e: Estabelecimento | null, eventos: string[], competenci
 
   const secundarios = (e.cnaes_secundarios ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const sec127 = secundarios.filter((s) => REGRAS.cnaesArt127[s]);
-  const sec128 = secundarios.filter((s) => REGRAS.divisoesArt128Saude.includes(divisaoCnae(s)));
+  const sec128 = secundarios.filter((s) =>
+    REGRAS.gruposArt128.saude.divisoes.includes(divisaoCnae(s))
+    || REGRAS.gruposArt128.educacao.cnaes.includes(s)
+    || REGRAS.gruposArt128.cultura.divisoes.includes(divisaoCnae(s)));
   if (!desc127 && !flags.includes("elegivel_128") && (sec127.length > 0 || sec128.length > 0)) {
     flags.push("cnae_suspeito");
     score += p.cnae_suspeito;

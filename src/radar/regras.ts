@@ -1,13 +1,13 @@
 /** MANTER EM SYNC com pipeline/radar/regras_tributarias.json.
- * FUNDAMENTADA v2: art. 127 (rol taxativo das 18 profissoes, 30%) x art. 128, II (saude, 60%).
- * 'parcial' = CNAE misto, revisar caso a caso. Administradores/economistas/RP:
- * sem CNAE seguro — deteccao manual (falso positivo certo se mapeados).
+ * v3: art. 127 (18 profissoes, 30%) + art. 128 por grupos:
+ * saude (86-87), educacao (8 CNAEs do Anexo II — apoio/cursos livres fora),
+ * cultura/jornalismo/audiovisual (58-60, 90-92, parcial).
  */
 export const REGRAS = {
-  regrasVersion: "2026-10-05.fundamentada-v2",
+  regrasVersion: "2026-10-05.fundamentada-v3",
   cnaesArt127: {
     "6911701": "Servicos advocaticios (advogados, OAB)",
-    "6911702": "Atividades auxiliares da justica (pericia, mediacao/arbitragem — parcial)",
+    "6911702": "Atividades auxiliares da justica (pericia judicial, mediacao/arbitragem — parcial)",
     "6920601": "Atividades de contabilidade (contabilistas, CRC)",
     "6920602": "Consultoria e auditoria contabil e tributaria (contabilistas, CRC)",
     "7111100": "Servicos de arquitetura (arquitetos e urbanistas, CAU)",
@@ -25,9 +25,15 @@ export const REGRAS = {
     "8800900": "Servicos sociais sem alojamento (assistentes sociais — parcial)",
     "9101100": "Bibliotecas e arquivos (bibliotecarios)",
     "9102300": "Museus e exploracao de espacos artisticos (museologos)",
-    "9313100": "Atividades de condicionamento fisico (profissionais de educacao fisica — parcial)",
-  } as Record<string, string>,
-  divisoesArt128Saude: [86, 87],
+    "9313100": "Atividades de condicionamento fisico (profissionais de educacao fisica — parcial)"
+} as unknown as Record<string, string>,
+  gruposArt128: {
+    saude: { divisoes: [86, 87], rotulo: "Servico de saude (art. 130 + Anexo III): reducao de 60% do IBS/CBS" },
+    educacao: { cnaes: ["8511200","8512100","8513300","8520100","8531700","8532500","8541400","8542200"],
+      rotulo: "Servico de educacao do Anexo II (art. 129): reducao de 60% — cursos livres, idiomas comuns e apoio (caixas escolares) ficam FORA" },
+    cultura: { divisoes: [58, 59, 60, 90, 91, 92],
+      rotulo: "Producao nacional artistica, cultural, de eventos, jornalistica ou audiovisual (art. 128, X): reducao de 60% — PARCIAL, verificar enquadramento" },
+  },
   pesos: {
     elegivel_127: 40,
     elegivel_128: 45,
