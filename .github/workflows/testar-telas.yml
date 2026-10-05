@@ -23,5 +23,4 @@ jobs:
       - name: Rodar agente de telas
         env:
           URL_ALVO: https://indice.ia.br/app
-          PUPPETEER_EXECUTABLE_PATH: ${{ env.HOME }}/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome
         run: node test/agente-telas.js

@@ -1,5 +1,25 @@
 // AGENTE DE TESTES DE TELAS — percorre a jornada inteira e acusa falhas
 const puppeteer = require('puppeteer-core');
+const fs = require('fs');
+const path = require('path');
+function resolveChromium() {
+  const candidatos = ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'];
+  const cacheDir = path.join(process.env.HOME || '', '.cache', 'puppeteer');
+  if (fs.existsSync(cacheDir)) {
+    const stack = [cacheDir];
+    while (stack.length) {
+      const dir = stack.pop();
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) stack.push(full);
+        else if (ent.name === 'chrome' || ent.name === 'chromium') candidatos.push(full);
+      }
+    }
+  }
+  for (const c of candidatos) { try { fs.accessSync(c, fs.constants.X_OK); return c; } catch {} }
+  throw new Error('Chromium nao encontrado; rode: npx puppeteer browsers install chromium');
+}
+const CHROMIUM = resolveChromium();
 const URL_ALVO = process.env.URL_ALVO || 'https://indice.ia.br/app';
 const resultados = [];
 function check(nome, ok, detalhe) {
@@ -7,7 +27,7 @@ function check(nome, ok, detalhe) {
   console.log((ok ? 'PASSOU' : 'FALHOU') + ' | ' + nome + (detalhe ? ' | ' + detalhe : ''));
 }
 (async () => {
-  const browser = await puppeteer.launch({executablePath: '/usr/bin/chromium', headless: 'new', args: ['--no-sandbox','--disable-gpu']});
+  const browser = await puppeteer.launch({executablePath: CHROMIUM, headless: 'new', args: ['--no-sandbox','--disable-gpu']});
   const page = await browser.newPage();
   await page.setViewport({width: 1440, height: 900});
   const errosJs = [];
